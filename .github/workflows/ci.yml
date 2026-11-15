@@ -36,6 +36,7 @@ jobs:
 
       - name: Smoke test CLI (drift fixture → exit 1)
         run: |
+          set +e
           node dist/cli.js test/fixtures/demo-app --json > /dev/null
           code=$?
           echo "exit=$code"
