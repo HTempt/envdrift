@@ -104,9 +104,9 @@ with leak values masked to the first 4 characters. `--fix` turns findings into a
 After writing, every touched file is re-parsed to guarantee it still parses, and a
 before/after dead+leak count is printed.
 
-## Web dashboard (v0.4)
+## Web console (v0.9)
 
-Prefer pointing and clicking over the terminal? The same engine ships with a local web UI:
+Prefer pointing and clicking over the terminal? The same engine ships with a local web console:
 
 ```bash
 envdrift-ui <project-path> [port]   # default port 3737, binds 127.0.0.1
@@ -114,41 +114,23 @@ envdrift-ui <project-path> [port]   # default port 3737, binds 127.0.0.1
 envdrift-ui D:/WorkSpace/SideJob/api
 ```
 
-Then open the printed URL. The dashboard gives you the full `--fix` flow with zero terminal:
+Light-tech console layout: dark-blue sidebar + workspace, compact overview strip,
+high-density tables — everything driven by the real scan:
 
-1. **Scan** — paste any project path, get the drift report as color-coded sections
-   (missing / leaks / dead / dynamic) with counts up top
-2. **Highlight** — each finding shows its file:line refs; leak rows are tinted red,
-   dead rows amber
-3. **Preview** — one click builds the cleanup plan and renders it as a red/green diff
-4. **Apply** — confirm, files are cleaned, results verified and re-analyzed live
+1. **Overview strip** — missing / leaks / dead / dynamic / files scanned / vars declared
+2. **Missing table** — variable, ref count, language chips, every usage location inline;
+   click any `file:line` to open the source in a modal with the offending line highlighted
+3. **Leaks & dead vars** — the exact cleanup action each will take, plus a live
+   `.env.example` preview with flagged lines; **应用清理** runs the same verified
+   plan-apply engine as the CLI
+4. **Watch mode** — after the first scan the console subscribes to file changes
+   (recursive, debounced) and re-scans automatically
 
-![scan report](docs/dashboard-scan.png)
-
-![cleanup preview](docs/dashboard-preview.png)
-
-![dark mode](docs/dashboard-dark.png)
+![console](design/impl-light.png)
 
 No framework, no build step, no external requests: a single static HTML file served
 by the same process that runs the analysis. Data never leaves your machine.
-Design tokens (spacing scale, type ramp, 9-step neutrals, semantic colors) with
-automatic dark mode; stat cards anchor-jump to their sections; diff rows carry
-line numbers and +/- glyph encoding, so the cleanup preview reads correctly
-without relying on color alone.
-
-### Watch mode
-
-After the first scan the dashboard automatically subscribes to file changes — the
-green pill in the header shows `● watching · 自动重扫`:
-
-- any change to scanned source files or `.env*` declaration files under the project
-  triggers a debounced re-scan (400 ms) and the report refreshes live
-- the pill turns amber (`文件已变更 · 重扫中…`) while re-scanning
-- watch is recursive and shared per project; run `envdrift-ui` on a monorepo root and
-  edits anywhere in the tree update the report
-- if the server closes, the UI silently falls back to manual scanning
-
-![watch mode](docs/dashboard-watch.png)
+`?theme=dark` for dark mode; otherwise follows the OS preference.
 
 ## Design notes
 

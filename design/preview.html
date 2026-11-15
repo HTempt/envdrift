@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>envdrift 控制台 — 浅色科技风</title>
+<style>
+/* ============================================================
+   envdrift dashboard · 浅色科技风（深蓝侧栏 + 浅灰蓝工作区）
+   参照：数据采集工具控制台布局
+   ============================================================ */
+:root {
+  --sidebar-bg: #1c2b4a;
+  --sidebar-bg2: #16233d;
+  --sidebar-fg: #b9c4da;
+  --sidebar-fg-dim: #7c8aab;
+  --sidebar-active: #3d63dd;
+  --brand: #3d63dd;
+  --brand-strong: #2f52c4;
+  --brand-subtle: #eef3ff;
+
+  --bg: #eef2f9;
+  --surface: #ffffff;
+  --fg: #1f2733;
+  --fg-muted: #667085;
+  --fg-faint: #98a2b3;
+  --line: #e4e9f2;
+  --line-strong: #d0d9e8;
+
+  --green: #12b76a;
+  --green-bg: #e8f9f0;
+  --red: #f04438;
+  --red-bg: #feeceb;
+  --amber: #f79009;
+  --amber-bg: #fef4e6;
+  --blue: #3d63dd;
+  --blue-bg: #eef3ff;
+  --purple: #7a5af8;
+  --purple-bg: #f2efff;
+
+  --radius: 8px;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 13.5px; line-height: 1.55; color: var(--fg);
+  display: grid; grid-template-columns: 200px 1fr;
+  background: var(--bg); min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: var(--mono); }
+
+/* ================= sidebar ================= */
+aside {
+  background: linear-gradient(180deg, var(--sidebar-bg), var(--sidebar-bg2));
+  color: var(--sidebar-fg);
+  display: flex; flex-direction: column;
+  padding: 16px 12px;
+  position: sticky; top: 0; height: 100vh;
+}
+.brand { display: flex; align-items: center; gap: 9px; padding: 6px 8px 20px; }
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 8px; flex: none;
+  background: linear-gradient(135deg, #4d7cff, #7a5af8);
+  display: grid; place-items: center;
+  font-family: var(--mono); font-weight: 700; font-size: 14px; color: #fff;
+  box-shadow: 0 4px 12px rgba(61, 99, 221, .45);
+}
+.brand-name { font-size: 15px; font-weight: 650; color: #fff; letter-spacing: -0.01em; }
+.brand-sub { font-size: 10.5px; color: var(--sidebar-fg-dim); margin-top: -2px; }
+nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 7px;
+  color: var(--sidebar-fg); text-decoration: none; font-size: 13.5px;
+  transition: background .12s ease-out, color .12s ease-out;
+}
+.nav-item .ico { width: 16px; text-align: center; opacity: .85; font-size: 13px; }
+.nav-item:hover { background: rgba(255,255,255,.07); color: #fff; }
+.nav-item.active {
+  background: var(--sidebar-active); color: #fff; font-weight: 550;
+  box-shadow: 0 2px 8px rgba(61, 99, 221, .4);
+}
+.side-version {
+  margin: 12px 8px 0; padding: 6px 10px; border-radius: 6px;
+  background: rgba(255,255,255,.06); color: var(--sidebar-fg-dim);
+  font-size: 11px; font-family: var(--mono); text-align: center;
+}
+
+/* ================= main ================= */
+main { padding: 0 20px 32px; min-width: 0; }
+
+/* topbar */
+.topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0 14px; font-size: 12.5px; color: var(--fg-muted);
+}
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px 11px; font-size: 12px; color: var(--fg);
+}
+.status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-bg); }
+.topbar .time { font-family: var(--mono); font-size: 12px; }
+.topbar .spacer { flex: 1; }
+.avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, #4d7cff, #7a5af8);
+  color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 600;
+}
+
+/* ---------- hero banner ---------- */
+.hero {
+  position: relative; overflow: hidden;
+  background: linear-gradient(105deg, #e9efff 0%, #f3f0ff 55%, #eef2f9 100%);
+  border: 1px solid #dfe7fb; border-radius: 10px;
+  padding: 18px 22px;
+  display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.hero-info { flex: 1 1 260px; display: flex; align-items: center; gap: 16px; }
+.hero-art {
+  width: 58px; height: 58px; border-radius: 12px; flex: none;
+  background: linear-gradient(135deg, #4d7cff 0%, #7a5af8 100%);
+  display: grid; place-items: center; color: #fff; font-size: 26px;
+  box-shadow: 0 8px 20px rgba(77, 124, 255, .35);
+}
+.hero h1 { font-size: 20px; font-weight: 650; letter-spacing: -0.02em; }
+.hero .desc { font-size: 12.5px; color: var(--fg-muted); margin-top: 2px; }
+.roadmap { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; }
+.road {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 14px; min-width: 150px;
+}
+.road .ver { display: flex; align-items: center; gap: 7px; font-weight: 650; font-size: 13.5px; }
+.road .ver .ring { width: 9px; height: 9px; border-radius: 50%; border: 2.5px solid var(--brand); }
+.road.current .ver .ring { background: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 3px var(--blue-bg); }
+.road .ver .tag { font-size: 10.5px; color: var(--brand); background: var(--brand-subtle); border-radius: 4px; padding: 1px 6px; font-weight: 550; }
+.road p { font-size: 11.5px; color: var(--fg-muted); margin-top: 4px; line-height: 1.5; }
+.road-arrow { align-self: center; color: var(--fg-faint); font-size: 16px; }
+
+/* ---------- module grid ---------- */
+.grid { display: grid; grid-template-columns: 1fr 340px; gap: 14px; margin-bottom: 14px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } body { grid-template-columns: 64px 1fr; } .nav-label, .brand-text { display: none; } }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 16px; border-bottom: 1px solid var(--line);
+}
+.card-title { font-size: 14px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.card-title .tico {
+  width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
+  font-size: 12px;
+}
+.tico.blue { background: var(--blue-bg); color: var(--blue); }
+.tico.purple { background: var(--purple-bg); color: var(--purple); }
+.card-link { font-size: 12px; color: var(--fg-muted); text-decoration: none; }
+.card-link:hover { color: var(--brand); }
+.card-body { padding: 14px 16px; }
+
+/* quick entries */
+.quick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.qitem {
+  border: 1px solid var(--line); border-radius: 8px; padding: 12px;
+  display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: var(--fg);
+  transition: border-color .12s ease-out, transform .12s ease-out, box-shadow .12s ease-out;
+}
+.qitem:hover { border-color: var(--brand); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(61,99,221,.12); }
+.qico { width: 30px; height: 30px; border-radius: 7px; display: grid; place-items: center; font-size: 14px; }
+.qico.b { background: var(--blue-bg); color: var(--blue); }
+.qico.p { background: var(--purple-bg); color: var(--purple); }
+.qico.g { background: var(--green-bg); color: var(--green); }
+.qico.a { background: var(--amber-bg); color: var(--amber); }
+.qitem b { font-size: 12.5px; font-weight: 600; }
+.qitem span { font-size: 11px; color: var(--fg-faint); }
+
+/* ---------- overview strip (compact) ---------- */
+.overview { display: flex; gap: 0; margin-bottom: 12px; }
+.ov { flex: 1; padding: 10px 16px; display: flex; align-items: center; gap: 11px; }
+.ov + .ov { border-left: 1px solid var(--line); }
+.ov-ico { width: 30px; height: 30px; border-radius: 7px; display: grid; place-items: center; font-size: 14px; flex: none; }
+.ov b { font-size: 19px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; display: block; line-height: 1.2; }
+.ov .lbl { font-size: 11.5px; color: var(--fg-muted); display: block; }
+
+/* ---------- tables ---------- */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  text-align: left; font-size: 12px; font-weight: 550; color: var(--fg-muted);
+  padding: 7px 16px; border-bottom: 1px solid var(--line); white-space: nowrap;
+  background: #fafbfe;
+}
+tbody td { padding: 7px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: #f8faff; }
+.varname { font-family: var(--mono); font-size: 12.5px; font-weight: 600; }
+.cell-muted { color: var(--fg-faint); font-size: 12px; }
+.loc { font-family: var(--mono); font-size: 12px; color: var(--fg-muted); cursor: pointer; }
+.loc:hover { color: var(--brand); text-decoration: underline; }
+.chip {
+  display: inline-block; font-family: var(--mono); font-size: 10.5px;
+  color: var(--fg-muted); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-right: 3px;
+}
+.state {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-weight: 550; border-radius: 5px; padding: 2px 8px;
+}
+.state .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.state.missing { color: var(--red); background: var(--red-bg); }
+.state.leak { color: var(--amber); background: var(--amber-bg); }
+.state.dead { color: var(--fg-muted); background: #f1f3f8; }
+.state.dyn { color: var(--blue); background: var(--blue-bg); }
+.rowlink { color: var(--brand); font-size: 12px; text-decoration: none; font-weight: 500; }
+.rowlink:hover { text-decoration: underline; }
+.rowactions { display: flex; gap: 8px; align-items: center; }
+.iconbtn {
+  font: inherit; font-size: 12px; color: var(--fg-muted);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+  padding: 3px 10px; cursor: pointer;
+}
+.iconbtn:hover { color: var(--brand); border-color: var(--brand); background: var(--brand-subtle); }
+
+/* section header inside cards */
+.subhead {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; font-size: 12px; color: var(--fg-muted);
+  border-bottom: 1px solid var(--line); background: #fafbfe;
+}
+.subhead b { color: var(--fg); font-size: 12.5px; }
+
+/* ---------- code block (env preview) ---------- */
+.codecard { margin-top: 14px; }
+.codewrap {
+  display: grid; grid-template-columns: 1fr 220px; gap: 0;
+}
+@media (max-width: 900px) { .codewrap { grid-template-columns: 1fr; } }
+pre.code {
+  font-family: var(--mono); font-size: 12px; line-height: 1.8;
+  background: #f7f9fd; padding: 12px 16px; margin: 0; overflow-x: auto;
+  color: var(--fg); counter-reset: ln;
+}
+pre.code .ln { color: var(--fg-faint); user-select: none; margin-right: 14px; }
+pre.code .hot { background: var(--red-bg); border-left: 2px solid var(--red); padding-left: 8px; margin-left: -10px; display: inline-block; width: calc(100% + 18px); }
+pre.code .dead-line { background: #f1f3f8; border-left: 2px solid var(--amber); padding-left: 8px; margin-left: -10px; display: inline-block; width: calc(100% + 18px); }
+.code-side { border-left: 1px solid var(--line); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.code-side .cs-title { font-size: 12px; font-weight: 600; color: var(--fg); display: flex; align-items: center; gap: 6px; }
+.kv { display: flex; justify-content: space-between; font-size: 12px; color: var(--fg-muted); }
+.kv b { color: var(--fg); font-variant-numeric: tabular-nums; }
+
+/* footer */
+.footer { margin-top: 18px; font-size: 12px; color: var(--fg-faint); display: flex; gap: 8px; align-items: center; }
+.footer a { color: var(--fg-muted); text-decoration: none; }
+.footer a:hover { color: var(--brand); }
+
+/* dark override (toggle) */
+html.dark {
+  --sidebar-bg: #0f1524; --sidebar-bg2: #0c111e;
+  --bg: #0e1220; --surface: #161c2e; --fg: #e2e8f4; --fg-muted: #8d99b5; --fg-faint: #5f6b88;
+  --line: #232c44; --line-strong: #2f3a58;
+  --brand: #5b82f0; --brand-subtle: #1a2440;
+  --blue-bg: #1a2440; --purple-bg: #221d3f; --green-bg: #0f2a1e; --red-bg: #2f1a1e; --amber-bg: #2b2213;
+  --green: #33d699; --red: #ff6b60; --amber: #f7b155; --blue: #7b9bff; --purple: #a78bfa;
+}
+html.dark thead th { background: #131930; }
+html.dark tbody tr:hover { background: #1a2240; }
+html.dark pre.code { background: #10152a; }
+html.dark pre.code .hot { background: rgba(240, 68, 56, .12); }
+html.dark pre.code .dead-line { background: rgba(247, 144, 9, .1); }
+html.dark .hero { background: linear-gradient(105deg, #16204a 0%, #1c1740 55%, #12182e 100%); border-color: #232c52; }
+html.dark .subhead, html.dark .ov + .ov { border-color: var(--line); }
+html.dark .subhead { background: #131930; }
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand">
+    <div class="brand-mark">ed</div>
+    <div class="brand-text">
+      <div class="brand-name">envdrift</div>
+      <div class="brand-sub">Env Drift Console</div>
+    </div>
+  </div>
+  <nav>
+    <a class="nav-item active" href="#"><span class="ico">▦</span><span class="nav-label">工作台</span></a>
+    <a class="nav-item" href="#"><span class="ico">⌕</span><span class="nav-label">扫描任务</span></a>
+    <a class="nav-item" href="#"><span class="ico">⚙</span><span class="nav-label">配置管理</span></a>
+    <a class="nav-item" href="#"><span class="ico">✎</span><span class="nav-label">清理历史</span></a>
+    <a class="nav-item" href="#"><span class="ico">◷</span><span class="nav-label">扫描日志</span></a>
+  </nav>
+  <div class="side-version">v0.9-preview</div>
+</aside>
+
+<main>
+  <div class="topbar">
+    <span class="status-pill"><span class="dot"></span>监听中</span>
+    <span class="time mono">164 文件 · 26 引用 · 2026-11-15 23:48</span>
+    <span class="spacer"></span>
+    <button class="iconbtn">重新扫描</button>
+  </div>
+
+  <div class="card overview">
+    <div class="ov">
+      <div class="ov-ico" style="background: var(--red-bg); color: var(--red);">!</div>
+      <div><b>4</b><span class="lbl">缺失变量</span></div>
+    </div>
+    <div class="ov">
+      <div class="ov-ico" style="background: var(--amber-bg); color: var(--amber);">◆</div>
+      <div><b>1</b><span class="lbl">疑似泄漏</span></div>
+    </div>
+    <div class="ov">
+      <div class="ov-ico" style="background: #f1f3f8; color: var(--fg-muted);">◌</div>
+      <div><b>1</b><span class="lbl">死变量</span></div>
+    </div>
+    <div class="ov">
+      <div class="ov-ico" style="background: var(--blue-bg); color: var(--blue);">~</div>
+      <div><b>1</b><span class="lbl">动态引用</span></div>
+    </div>
+    <div class="ov">
+      <div class="ov-ico" style="background: var(--green-bg); color: var(--green);">✓</div>
+      <div><b>164</b><span class="lbl">扫描文件</span></div>
+    </div>
+    <div class="ov">
+      <div class="ov-ico" style="background: var(--blue-bg); color: var(--blue);">⌗</div>
+      <div><b>9</b><span class="lbl">声明变量</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="tico blue">≡</span>缺失变量 <span style="font-size:11px;color:var(--red);background:var(--red-bg);border-radius:999px;padding:1px 8px;">4</span></div>
+      <div class="rowactions">
+        <button class="iconbtn">复制变量名</button>
+        <button class="iconbtn" style="background:var(--brand); color:#fff; border-color:var(--brand);">写入 .env.example</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>变量名</th><th>引用</th><th>语言</th><th>使用位置</th><th>操作</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="varname">QUEUE_REDIS_URL</td>
+            <td class="cell-muted">2</td>
+            <td><span class="chip">go</span><span class="chip">js</span></td>
+            <td><span class="loc">src/queue.go:6</span> <span class="cell-muted">src/server.js:21</span></td>
+            <td><div class="rowactions"><a class="rowlink" href="#">查看</a><a class="rowlink" href="#">声明</a><a class="rowlink" href="#">忽略</a></div></td>
+          </tr>
+          <tr>
+            <td class="varname">SMTP_PASSWORD</td>
+            <td class="cell-muted">2</td>
+            <td><span class="chip">js</span><span class="chip">python</span></td>
+            <td><span class="loc">src/server.js:22</span> <span class="cell-muted">src/worker.py:6</span></td>
+            <td><div class="rowactions"><a class="rowlink" href="#">查看</a><a class="rowlink" href="#">声明</a><a class="rowlink" href="#">忽略</a></div></td>
+          </tr>
+          <tr>
+            <td class="varname">SMTP_HOST</td>
+            <td class="cell-muted">1</td>
+            <td><span class="chip">js</span></td>
+            <td><span class="loc">config/settings.js:3</span></td>
+            <td><div class="rowactions"><a class="rowlink" href="#">查看</a><a class="rowlink" href="#">声明</a><a class="rowlink" href="#">忽略</a></div></td>
+          </tr>
+          <tr>
+            <td class="varname">REGIONAL_API_URL</td>
+            <td class="cell-muted">1</td>
+            <td><span class="chip">js</span></td>
+            <td><span class="loc">config/settings.js:4</span></td>
+            <td><div class="rowactions"><a class="rowlink" href="#">查看</a><a class="rowlink" href="#">声明</a><a class="rowlink" href="#">忽略</a></div></td>
+          </tr>
+          <tr>
+            <td class="varname">PORT</td>
+            <td class="cell-muted">1</td>
+            <td><span class="chip">js</span></td>
+            <td><span class="loc">src/server.js:27</span> <span class="cell-muted">已忽略（内置白名单）</span></td>
+            <td><div class="rowactions"><a class="rowlink" href="#">恢复</a></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:14px;">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="tico purple">≡</span>泄漏与死变量</div>
+        <div class="rowactions">
+          <button class="iconbtn">取消</button>
+          <button class="iconbtn" style="background:var(--brand); color:#fff; border-color:var(--brand);">应用清理</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>状态</th><th>变量</th><th>位置</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="state leak"><span class="dot"></span>泄漏</span></td>
+              <td class="varname">DATABASE_URL</td>
+              <td><span class="loc">.env.example:2</span></td>
+              <td class="cell-muted">数据库 URL 含账密，值将中和为 REMOVED_BY_ENVDRIFT</td>
+            </tr>
+            <tr>
+              <td><span class="state dead"><span class="dot"></span>死变量</span></td>
+              <td class="varname">STRIPE_API_KEY</td>
+              <td><span class="loc">.env.example:17</span></td>
+              <td class="cell-muted">无引用，将删行并留墓碑注释</td>
+            </tr>
+            <tr>
+              <td><span class="state dyn"><span class="dot"></span>动态</span></td>
+              <td class="varname">&lt;dynamic:key&gt;</td>
+              <td><span class="loc">src/server.js:18</span></td>
+              <td class="cell-muted">运行时变量名查找，不参与判定</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="tico blue">⌗</span>.env.example 预览</div>
+        <span class="cell-muted">9 行</span>
+      </div>
+      <pre class="code" style="border:none; border-radius:0 0 10px 10px;"><span class="ln">14</span>ENABLE_FEATURE_X=true
+<span class="ln">15</span>
+<span class="ln">16</span># External services
+<span class="dead-line"><span class="ln">17</span>STRIPE_API_KEY=your-stripe-key-here</span>
+<span class="ln">18</span>SENTRY_DSN=</pre>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>envdrift 本地控制台 · 数据不出本机（127.0.0.1）</span>
+    <span>·</span>
+    <a href="https://github.com/HTempt/envdrift">GitHub</a>
+  </div>
+</main>
+
+<script>
+  const t = new URLSearchParams(location.search).get('theme');
+  if (t === 'dark') document.documentElement.classList.add('dark');
+</script>
+</body>
+</html>
