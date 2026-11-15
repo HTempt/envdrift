@@ -3,6 +3,34 @@
  */
 
 import type { DriftReport } from './analyzer.js';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+/** report root is the analysis root; we resolve source lines relative to it */
+let reportRoot = '.';
+export function setReportRoot(root: string): void {
+  reportRoot = root;
+}
+
+/** fetch the raw config line behind a finding for inline highlight */
+function highlightLine(r: DriftReport, file: string, line: number): string | undefined {
+  try {
+    const base = (r as { _root?: string })._root ?? reportRoot;
+    const content = readFileSync(resolve(base, file), 'utf8');
+    return content.split(/\r?\n/)[line - 1]?.trimEnd();
+  } catch {
+    return undefined;
+  }
+}
+
+/** never print real secrets in full; show first 4 chars + … */
+function maskSecrets(line: string): string {
+  const m = /^(\s*(?:export\s+)?[A-Za-z_][A-Za-z0-9_.-]*\s*=\s*)(.{4}) (.*)$/.exec(line);
+  if (m) return `${m[1]}${m[2]}…${'*'.repeat(6)}`;
+  const m2 = /^(\s*(?:export\s+)?[A-Za-z_][A-Za-z0-9_.-]*\s*=\s*)(.+)$/.exec(line);
+  if (m2 && m2[2]!.length > 4) return `${m2[1]}${m2[2]!.slice(0, 4)}…${'*'.repeat(6)}`;
+  return line;
+}
 
 const RESET = '\x1b[0m';
 const BOLD = '\x1b[1m';
@@ -40,13 +68,17 @@ export function renderText(r: DriftReport): string {
     head(`⚠ possible leaked secrets in committed env files (${r.leaks.length})`);
     for (const l of r.leaks) {
       L.push(`  ${c(RED, l.name)}  ${c(DIM, `${l.file}:${l.line} — ${l.reason}`)}`);
+      const line = highlightLine(r, l.file, l.line);
+      if (line !== undefined) L.push(`      ${c(RED, `│ ${maskSecrets(line)}`)}`);
     }
   }
 
   if (r.dead.length) {
-    head(`~ declared but unused (${r.dead.length}) — candidate dead vars`);
+    head(`~ declared but unused (${r.dead.length}) — candidate dead vars  ${c(DIM, '(envdrift --fix to clean)')}`);
     for (const d of r.dead.slice(0, 15)) {
       L.push(`  ${c(YELLOW, d.name)}  ${c(DIM, `${d.declaredIn}:${d.line}${d.comment ? ` — ${d.comment}` : ''}`)}`);
+      const line = highlightLine(r, d.declaredIn, d.line);
+      if (line !== undefined) L.push(`      ${c(YELLOW, `│ ${line}`)}`);
     }
     if (r.dead.length > 15) L.push(c(DIM, `  … and ${r.dead.length - 15} more`));
   }

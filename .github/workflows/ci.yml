@@ -50,3 +50,22 @@ jobs:
           code=$?
           echo "exit=$code"
           test "$code" -eq 0
+
+      - name: Smoke test --fix dry-run (no mutation)
+        shell: bash
+        run: |
+          before=$(md5sum test/fixtures/demo-app/.env.example | cut -d' ' -f1)
+          node dist/cli.js test/fixtures/demo-app --fix --dry-run > /dev/null
+          after=$(md5sum test/fixtures/demo-app/.env.example | cut -d' ' -f1)
+          test "$before" = "$after" && echo "dry-run left file untouched"
+
+      - name: Smoke test --fix --yes (cleans dead+leaks, restore after)
+        shell: bash
+        run: |
+          cp test/fixtures/demo-app/.env.example /tmp/envex.bak
+          node dist/cli.js test/fixtures/demo-app --fix --yes > /dev/null
+          ! grep -q STRIPE_API_KEY test/fixtures/demo-app/.env.example
+          ! grep -q 'postgres://user:pass' test/fixtures/demo-app/.env.example
+          grep -q 'REMOVED_BY_ENVDRIFT' test/fixtures/demo-app/.env.example
+          cp /tmp/envex.bak test/fixtures/demo-app/.env.example
+          echo "fix applied and fixture restored"

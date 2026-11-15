@@ -84,6 +84,26 @@ envdrift [path]
 
 Exit codes: `0` clean · `1` missing vars or leaked secrets · `2` tool error.
 
+## Auto-cleanup (`--fix`)
+
+```bash
+envdrift --fix              # highlight problems → preview → confirm → apply
+envdrift --fix --dry-run    # preview only, write nothing
+envdrift --fix --yes        # skip the prompt (scripts)
+envdrift --fix --json       # machine-readable plan (for AI agents)
+```
+
+The report itself now highlights the offending config line inline (`│ KEY=value`),
+with leak values masked to the first 4 characters. `--fix` turns findings into a plan:
+
+- **dead var** → line deleted; its doc comment becomes a tombstone `# removed by envdrift: KEY`
+- **leak, var still used** → value neutralized in place: `KEY=<REMOVED_BY_ENVDRIFT>` (rotate the real secret!)
+- **dead AND leaked** → line deleted entirely (a placeholder for an unused secret has no value)
+- missing vars are **never** auto-written — they need real values only you know
+
+After writing, every touched file is re-parsed to guarantee it still parses, and a
+before/after dead+leak count is printed.
+
 ## Design notes
 
 - Static-analysis only — fast, no execution, no config needed. Dynamic lookups are reported, not guessed.
