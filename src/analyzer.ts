@@ -9,7 +9,7 @@
  */
 
 import { parseEnvFile, envMap, type EnvEntry } from './envfile.js';
-import { scanDirectory, type EnvRef } from './scanner.js';
+import { scanDirectory, scanSpringConfig, isSpringConfigFile, type EnvRef } from './scanner.js';
 
 export interface MissingVar {
   name: string;
@@ -121,6 +121,33 @@ export async function analyze(opts: AnalyzeOptions): Promise<DriftReport> {
   const scan = scanDirectory(absRoot);
   const rel = (p: string) => path.relative(absRoot, p).split('\\').join('/');
 
+  // 3b. Spring detection: application.properties / application.yml anywhere in the tree.
+  // Declared keys act as a second declaration surface; ${VAR} placeholders inside
+  // values (e.g. spring.datasource.password=${DB_PASSWORD}) act as usages.
+  const springPropFiles = springFiles(absRoot, fs, path);
+  const isSpring = springPropFiles.length > 0;
+  if (isSpring) {
+    for (const abs of springPropFiles) {
+      let content: string;
+      try {
+        content = fs.readFileSync(abs, 'utf8');
+      } catch {
+        continue;
+      }
+      const s = scanSpringConfig(content, abs);
+      for (const d of s.declared) {
+        const name = d.name;
+        if (!exampleMap.has(name)) {
+          exampleMap.set(name, { key: name, value: '', line: d.line });
+          deadCandidates.push({ name, declaredIn: rel(abs), line: d.line });
+        }
+      }
+      for (const c of s.consumed) {
+        scan.refs.push({ ...c, file: rel(c.file) });
+      }
+    }
+  }
+
   // 4. classify (built-in allowlist always applies; user --allow only adds)
   const allow = new Set([...DEFAULT_ALLOW, ...(opts.allow ?? [])]);
   const refAgg = new Map<string, { file: string; line: number }[]>();
@@ -133,6 +160,8 @@ export async function analyze(opts: AnalyzeOptions): Promise<DriftReport> {
       dynamicRefs.push({ name: r.name, file: rel(r.file), line: r.line });
       continue;
     }
+    // In Spring projects, @Value("${db.url}") refs are dotted property names, not env names.
+    // Keep them distinct; matching against declarations uses relaxed binding below.
     staticNames.add(r.name);
     if (!refAgg.has(r.name)) refAgg.set(r.name, []);
     refAgg.get(r.name)!.push({ file: rel(r.file), line: r.line });
@@ -143,8 +172,13 @@ export async function analyze(opts: AnalyzeOptions): Promise<DriftReport> {
 
   const missing: MissingVar[] = [];
   for (const [name, refs] of refAgg) {
-    if (exampleMap.has(name)) continue;
     if (allow.has(name)) continue;
+    const declared = exampleMap.has(name)
+      ? name
+      : isSpring
+        ? findRelaxed(exampleMap, name)
+        : undefined;
+    if (declared !== undefined) continue;
     const local = localEntries.find((e) => e.key === name);
     missing.push({
       name,
@@ -155,8 +189,15 @@ export async function analyze(opts: AnalyzeOptions): Promise<DriftReport> {
   }
   missing.sort((a, b) => b.refs.length - a.refs.length);
 
+  // Spring dotted properties declared in application.* count as declarations for dead-var
+  // purposes only if nothing references them (via relaxed binding either direction).
   const referenced = staticNames;
-  const dead = deadCandidates.filter((d) => !referenced.has(d.name) && !allow.has(d.name));
+  const dead = deadCandidates.filter(
+    (d) =>
+      !referenced.has(d.name) &&
+      !allow.has(d.name) &&
+      !(isSpring && [...referenced].some((r) => sameSpringProp(r, d.name))),
+  );
 
   const leaks: LeakVar[] = [];
   for (const f of found) {
@@ -187,6 +228,11 @@ export async function analyze(opts: AnalyzeOptions): Promise<DriftReport> {
   };
 }
 
+const DEFAULT_IGNORES = new Set([
+  'node_modules', '.git', 'dist', 'build', 'out', '.next', '.nuxt',
+  'venv', '.venv', '__pycache__', 'target', 'vendor', '.cache', 'coverage',
+]);
+
 const DEFAULT_ALLOW = new Set([
   'NODE_ENV', 'PORT', 'NODE_OPTIONS', 'DEBUG', 'PATH', 'HOME', 'SHELL', 'LANG', 'TZ',
   'HOSTNAME', 'npm_lifecycle_event', 'npm_package_name', 'npm_package_version',
@@ -204,6 +250,53 @@ function isPlaceholder(v: string): boolean {
     /^\*+$/.test(s) ||
     s.length < 6
   );
+}
+
+/* ------------------------- Spring relaxed binding ------------------------- */
+
+/**
+ * Spring canonicalizes property names: lowercase, dots kept, dashes removed.
+ * `my.prop-Name` == `my.propname` == `MY_PROP_NAME` (env var form) == `my.prop.name` (no — dots are real separators).
+ * Env-var form maps `my.prop.name` -> `MY_PROP_NAME` (dots -> underscores). We compare via canonical form:
+ * lowercase, remove `-`/`_`, then also allow dot<->underscore equivalence via a second form.
+ */
+function canonicalProp(p: string): string {
+  return p.toLowerCase().replace(/[-_]/g, '');
+}
+
+function sameSpringProp(a: string, b: string): boolean {
+  return canonicalProp(a) === canonicalProp(b);
+}
+
+/** find declared key matching `name` under relaxed binding, or undefined */
+function findRelaxed(map: Map<string, EnvEntry>, name: string): string | undefined {
+  for (const key of map.keys()) {
+    if (sameSpringProp(key, name)) return key;
+  }
+  return undefined;
+}
+
+/** locate application.properties / application*.yml files (Spring signature) */
+function springFiles(root: string, fs: typeof import('node:fs'), path: typeof import('node:path')): string[] {
+  const out: string[] = [];
+  const stack = [root];
+  while (stack.length) {
+    const dir = stack.pop()!;
+    let entries: import('node:fs').Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const ent of entries) {
+      if (!ent.isFile()) {
+        if (ent.isDirectory() && !DEFAULT_IGNORES.has(ent.name)) stack.push(path.join(dir, ent.name));
+        continue;
+      }
+      if (/^application(-.+)?\.(properties|ya?ml)$/.test(ent.name)) out.push(path.join(dir, ent.name));
+    }
+  }
+  return out;
 }
 
 export { parseEnvFile, envMap };

@@ -75,10 +75,21 @@ const GO_PATTERNS: RegExp[] = [
   /\bos\.(?:Getenv|LookupEnv)\(\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*\)/g,
 ];
 
-/** Java/Kotlin: System.getenv("X") */
+/** Java/Kotlin: System.getenv("X"), System.getProperty("X") */
 const JVM_PATTERNS: RegExp[] = [
   /System\.getenv\(\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*\)/g,
-  /System\.getProperty\(\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*\)/g,
+  /System\.getProperty\(\s*"([A-Za-z_][A-Za-z0-9_.-]*)"\s*\)/g,
+];
+
+/**
+ * Spring Framework / Spring Boot:
+ * - @Value("${prop.name}") / @Value("${prop.name:default}") on fields and constructor params
+ * - environment.getProperty("prop.name") / env.getRequiredProperty("prop.name")
+ * - @ConfigurationProperties binding reads config files, not placeholders — covered via .properties/.yml refs
+ */
+const SPRING_PATTERNS: RegExp[] = [
+  /@Value\(\s*(["'])\$\{([A-Za-z0-9_.-]+?)(?::([^}"']*))?\}\1\s*\)/g,
+  /(?:environment|env)\.get(?:Required)?Property\(\s*"([A-Za-z0-9_.-]+?)"/g,
 ];
 
 /** Rust: std::env::var("X"), env::var("X") */
@@ -111,6 +122,12 @@ const YAML_ENV_BLOCK: RegExp[] = [
   // GitHub Actions / k8s: `- name: VAR_NAME` with valueKey following — capture the name when followed by value on next line
 ];
 
+/**
+ * Java .properties / application.yml are parsed by the analyzer as Spring
+ * declarations, not scanned as generic usage here — keys are declarations,
+ * `${VAR}` placeholders inside values are the actual usage.
+ */
+
 const EXT_LANG: Record<string, RegExp[][]> = {
   '.js': [JS_PATTERNS, JS_DYNAMIC],
   '.jsx': [JS_PATTERNS, JS_DYNAMIC],
@@ -125,8 +142,8 @@ const EXT_LANG: Record<string, RegExp[][]> = {
   '.astro': [JS_PATTERNS],
   '.py': [PY_PATTERNS],
   '.go': [GO_PATTERNS],
-  '.java': [JVM_PATTERNS],
-  '.kt': [JVM_PATTERNS],
+  '.java': [[...JVM_PATTERNS, ...SPRING_PATTERNS], []],
+  '.kt': [[...JVM_PATTERNS, ...SPRING_PATTERNS], []],
   '.rs': [RS_PATTERNS],
   '.rb': [RB_PATTERNS],
   '.php': [PHP_PATTERNS],
@@ -171,6 +188,66 @@ export function scanDirectory(root: string): ScanResult {
     refs.push(...scanContent(content, file));
   }
   return { refs, filesScanned };
+}
+
+export interface SpringScan {
+  /** property keys declared in application.properties / application.yml */
+  declared: { name: string; file: string; line: number }[];
+  /** ${VAR} / ${VAR:default} placeholders consumed inside property values */
+  consumed: EnvRef[];
+}
+
+/** true when the file is a Spring config file (application.properties / application*.yml) */
+export function isSpringConfigFile(filePath: string): boolean {
+  return /(^|[\\/])application(-.+)?\.(properties|ya?ml)$/i.test(filePath);
+}
+
+/**
+ * Parse a Spring config file: `key=value` (properties) or flat YAML `key: value`
+ * pairs. Declared keys are returned with positions; `${VAR}` placeholders inside
+ * values (e.g. spring.datasource.password=${DB_PASSWORD}) are returned as usages.
+ */
+export function scanSpringConfig(content: string, filePath: string): SpringScan {
+  const declared: { name: string; file: string; line: number }[] = [];
+  const consumed: EnvRef[] = [];
+  const lines = content.split(/\r?\n/);
+  let yamlIndent: number | null = null;
+
+  lines.forEach((raw, i) => {
+    const lineNo = i + 1;
+    const isProps = filePath.toLowerCase().endsWith('.properties');
+    const line = raw.trim();
+
+    if (line === '' || line.startsWith('#')) return;
+
+    if (isProps) {
+      const m = /^([A-Za-z][A-Za-z0-9_.\-\[\]]*)\s*[=:](.*)$/.exec(line);
+      if (!m) return;
+      declared.push({ name: m[1]!, file: filePath, line: lineNo });
+      consumePlaceholders(m[2] ?? '', filePath, lineNo, consumed);
+      return;
+    }
+
+    // yaml: track whether we are inside a top-level `spring:` block is unnecessary —
+    // dotted/spring keys are matched structurally: `key: value` with 0 indentation.
+    const indent = raw.length - raw.trimStart().length;
+    const m = /^([A-Za-z][A-Za-z0-9_.\-]*)\s*:\s*(.*)$/.exec(line);
+    if (!m) return;
+    if (indent === 0) yamlIndent = 0;
+    if (m[2] === '' || m[2] === '|' || m[2] === '>') return; // section header
+    declared.push({ name: m[1]!, file: filePath, line: lineNo });
+    consumePlaceholders(m[2]!, filePath, lineNo, consumed);
+  });
+
+  return { declared, consumed };
+}
+
+function consumePlaceholders(value: string, file: string, line: number, out: EnvRef[]): void {
+  const re = /\$\{([A-Za-z_][A-Za-z0-9_.-]*)(?::[^}]*)?\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(value)) !== null) {
+    out.push({ name: m[1]!, file, line, dynamic: false });
+  }
 }
 
 export function scanContent(content: string, filePath: string): EnvRef[] {

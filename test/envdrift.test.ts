@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseEnvFile } from '../src/envfile.js';
-import { scanContent } from '../src/scanner.js';
+import { scanContent, scanSpringConfig } from '../src/scanner.js';
 import { analyze } from '../src/analyzer.js';
 import { renderText, renderJson, reportExitCode } from '../src/report.js';
 import { fileURLToPath } from 'node:url';
@@ -118,5 +118,42 @@ describe('report', () => {
     const parsed = JSON.parse(renderJson(report));
     expect(parsed.summary.missing).toBe(report.missing.length);
     expect(parsed.project).toBe('demo-app');
+  });
+});
+
+describe('Spring Boot (spring-app fixture)', () => {
+  const springDir = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'spring-app');
+
+  it('@Value placeholders, getProperty and properties keys are all recognized', async () => {
+    const report = await analyze({ root: springDir });
+    const names = (arr: { name: string }[]) => arr.map((x) => x.name);
+
+    // declared in application.properties; referenced via relaxed binding variants → NOT missing
+    expect(names(report.missing)).not.toContain('app.upload-dir');
+    expect(names(report.missing)).not.toContain('app.featureLegacy.enabled'); // relaxed binding match
+
+    // referenced but never declared anywhere:
+    // DB_PASSWORD is consumed by ${DB_PASSWORD} in application.properties but declared nowhere
+    expect(names(report.missing)).toEqual(
+      expect.arrayContaining(['app.mail.smtp-host', 'app.region', 'app.cache.ttl-seconds', 'DB_PASSWORD']),
+    );
+
+    // dead property: nothing references springdoc.api-docs.enabled
+    expect(names(report.dead)).toContain('springdoc.api-docs.enabled');
+
+    // properties that ARE referenced count as alive
+    expect(names(report.dead)).not.toContain('app.upload-dir');
+  });
+
+  it('scanner picks up properties keys and Spring annotations directly', () => {
+    const spring = scanSpringConfig(
+      'app.upload-dir=uploads\n# comment\nspring.datasource.password=${DB_PASSWORD}\n',
+      'application.properties',
+    );
+    expect(spring.declared.map((d) => d.name)).toEqual(['app.upload-dir', 'spring.datasource.password']);
+    expect(spring.consumed.map((c) => c.name)).toEqual(['DB_PASSWORD']);
+
+    const java = scanContent('@Value("${app.mail.smtp-host:25}")\nprivate String h;', 'A.java');
+    expect(java.map((r) => r.name)).toEqual(['app.mail.smtp-host']);
   });
 });

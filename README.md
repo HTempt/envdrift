@@ -53,6 +53,16 @@ scanned 164 files · 23 unique env refs · 19 vars in example
 · `c#` (`Environment.GetEnvironmentVariable`)
 · `yaml` (docker-compose `- KEY=` list style)
 
+## Spring Boot support (v0.2)
+
+When a project contains `application.properties` / `application.yml`, envdrift switches to Spring mode:
+
+- **Declarations**: every key in `application.properties`/`application.yml` counts as declared (`spring.datasource.url`, `app.upload-dir`, …)
+- **Usages**: `@Value("${prop.name}")` and `@Value("${prop.name:default}")`, `environment.getProperty("prop.name")`, plus `${VAR}` placeholders consumed *inside* property values (`spring.datasource.password=${DB_PASSWORD}`)
+- **Relaxed binding**: `@Value("${app.featureLegacy.enabled}")` matches declared `app.feature-legacy.enabled` — dashes/case are canonicalized exactly like Spring does
+- `DB_PASSWORD` consumed by a placeholder but declared nowhere → reported missing (a fresh clone really would crash)
+- Framework-managed keys (`spring.*`, `springdoc.*`) that nothing reads show up as *declared but unused* — a useful hygiene signal, ignore them if you prefer
+
 ## AI-agent friendly
 
 `--json` emits a stable schema with a `summary.exitCode` field — designed for MCP servers, CI bots, and coding agents that provision their own sandboxes:
@@ -85,6 +95,7 @@ Exit codes: `0` clean · `1` missing vars or leaked secrets · `2` tool error.
 - `--fix`: write detected vars into `.env.example` with the nearest code comment as doc
 - git pre-commit hook + GitHub Action
 - MCP server wrapper
-- interpolation resolution (`${OTHER_VAR}` chains)
+- interpolation resolution (non-Spring `${OTHER_VAR}` chains in .env files)
+- YAML Spring config with nested `spring:` indentation blocks (flat keys only today)
 
 MIT
