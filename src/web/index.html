@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>envdrift dashboard</title>
+<style>
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px;
+  --radius-sm: 8px; --radius-md: 12px;
+  --text-sm: 13px; --text-base: 15px; --text-lg: 20px; --text-xl: 25px;
+  --fg: #1a1d21; --fg-muted: #5b6470; --bg: #ffffff; --bg-subtle: #f6f7f9;
+  --line: #e3e6ea; --accent: #2f6df6; --accent-subtle: #eef3fe;
+  --danger: #d93a3a; --danger-subtle: #fdf0f0;
+  --warn: #b97f10; --warn-subtle: #fdf7ea;
+  --ok: #1a7f4b; --ok-subtle: #ecf8f1;
+  --mono: ui-monospace, "JetBrains Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #d6dae0; --fg-muted: #8b939e; --bg: #14171c; --bg-subtle: #1a1e24;
+    --line: #2a2f37; --accent: #6b9bf8; --accent-subtle: #1d2634;
+    --danger: #f07575; --danger-subtle: #2b1d1f;
+    --warn: #d9a84e; --warn-subtle: #2a2318;
+    --ok: #57bd85; --ok-subtle: #16241d;
+  }
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: var(--text-base); line-height: 1.6; color: var(--fg);
+  background: var(--bg); padding: 0 var(--space-5) var(--space-7);
+  max-width: 1080px; margin: 0 auto;
+}
+button { font: inherit; cursor: pointer; border-radius: var(--radius-sm); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- header ---------- */
+header { display: flex; align-items: baseline; gap: var(--space-3); padding: var(--space-6) 0 var(--space-4); flex-wrap: wrap; }
+h1 { font-size: var(--text-xl); font-weight: 600; letter-spacing: -0.01em; }
+header .sub { color: var(--fg-muted); font-size: var(--text-sm); }
+.scanrow { display: flex; gap: var(--space-2); padding-bottom: var(--space-5); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.scanrow input {
+  flex: 1 1 320px; font: inherit; padding: 8px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-width: 0;
+}
+.scanrow input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-subtle); }
+.btn {
+  padding: 8px 16px; border: 1px solid var(--line); background: var(--bg-subtle);
+  color: var(--fg); font-weight: 500; transition: background .15s ease-out;
+}
+.btn:hover { background: var(--line); }
+.btn:active { transform: translateY(0.5px); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { filter: brightness(1.08); background: var(--accent); }
+.btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.danger:hover { filter: brightness(1.08); background: var(--danger); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--accent); padding: 8px 8px; }
+.btn.ghost:hover { text-decoration: underline; background: transparent; }
+
+/* ---------- summary ---------- */
+.summary { display: flex; gap: var(--space-5); padding: var(--space-4) 0; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.stat { display: flex; flex-direction: column; min-width: 88px; }
+.stat b { font-size: var(--text-lg); font-weight: 600; line-height: 1.3; }
+.stat span { font-size: var(--text-sm); color: var(--fg-muted); }
+.stat.missing b { color: var(--danger); }
+.stat.leaks b { color: var(--danger); }
+.stat.dead b { color: var(--warn); }
+.stat.dynamic b { color: var(--fg-muted); }
+
+/* ---------- sections ---------- */
+section { margin-top: var(--space-5); }
+section > h2 { font-size: var(--text-base); font-weight: 600; margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+.badge { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 8px; }
+.badge.red { background: var(--danger-subtle); color: var(--danger); }
+.badge.yellow { background: var(--warn-subtle); color: var(--warn); }
+.badge.gray { background: var(--bg-subtle); color: var(--fg-muted); }
+.empty { color: var(--fg-muted); font-size: var(--text-sm); padding: var(--space-3) 0; }
+.okline { color: var(--ok); background: var(--ok-subtle); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); margin-top: var(--space-5); }
+
+/* ---------- finding rows ---------- */
+.finding { border-left: 3px solid var(--line); padding: var(--space-2) 0 var(--space-2) var(--space-4); margin-bottom: var(--space-2); }
+.finding.missing { border-color: var(--danger); }
+.finding.leak { border-color: var(--danger); background: var(--danger-subtle); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.finding.dead { border-color: var(--warn); }
+.finding .name { font-family: var(--mono); font-weight: 600; font-size: 14px; }
+.finding .meta { color: var(--fg-muted); font-size: var(--text-sm); }
+.finding .src {
+  font-family: var(--mono); font-size: 12.5px; margin-top: var(--space-1);
+  color: var(--fg-muted); white-space: pre-wrap; word-break: break-all;
+}
+.finding.leak .src { color: var(--danger); }
+.finding.dead .src { color: var(--warn); }
+.finding .refs { margin: var(--space-1) 0 0; padding: 0; list-style: none; }
+.finding .refs li { font-family: var(--mono); font-size: 12.5px; color: var(--fg-muted); }
+.finding .refs a { color: var(--accent); text-decoration: none; }
+.finding .refs a:hover { text-decoration: underline; }
+
+/* ---------- diff preview ---------- */
+.diff { font-family: var(--mono); font-size: 12.5px; background: var(--bg-subtle); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
+.diff .file { padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); font-weight: 600; background: var(--bg); position: sticky; top: 0; }
+.diff pre { padding: var(--space-3) var(--space-4); margin: 0; overflow-x: auto; }
+.diff .del { color: var(--danger); background: var(--danger-subtle); display: block; padding: 0 var(--space-2); margin: 0 calc(-1 * var(--space-2)); }
+.diff .add { color: var(--ok); background: var(--ok-subtle); display: block; padding: 0 var(--space-2); margin: 0 calc(-1 * var(--space-2)); }
+.diff .ctx { color: var(--fg-muted); display: block; }
+.actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); align-items: center; flex-wrap: wrap; }
+.hint { font-size: var(--text-sm); color: var(--fg-muted); }
+.spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: r .7s linear infinite; vertical-align: -2px; }
+@keyframes r { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; border-top-color: var(--fg-muted); } }
+.result { margin-top: var(--space-4); }
+.result .vfile { font-size: var(--text-sm); font-family: var(--mono); padding: 2px 0; }
+.result .vfile.ok { color: var(--ok); }
+.result .vfile.bad { color: var(--danger); }
+.error { background: var(--danger-subtle); color: var(--danger); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); margin-top: var(--space-4); font-size: var(--text-sm); }
+footer { margin-top: var(--space-7); color: var(--fg-muted); font-size: var(--text-sm); border-top: 1px solid var(--line); padding-top: var(--space-4); }
+footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>envdrift</h1>
+  <span class="sub">环境变量漂移检测 · 代码与 .env.example 的差距</span>
+</header>
+
+<div class="scanrow">
+  <input id="root" type="text" spellcheck="false" placeholder="项目绝对路径，如 D:\WorkSpace\SideJob\envdrift\test\fixtures\demo-app" />
+  <button id="scan" class="btn primary">扫描</button>
+  <button id="fix" class="btn" disabled>生成清理预览</button>
+</div>
+
+<div id="status" class="hint" hidden></div>
+<div id="error" class="error" hidden></div>
+
+<div id="summary" class="summary" hidden>
+  <div class="stat missing"><b id="st-missing">–</b><span>缺失变量</span></div>
+  <div class="stat leaks"><b id="st-leaks">–</b><span>疑似泄漏</span></div>
+  <div class="stat dead"><b id="st-dead">–</b><span>死变量</span></div>
+  <div class="stat dynamic"><b id="st-dynamic">–</b><span>动态引用</span></div>
+</div>
+
+<div id="clean" class="okline" hidden>✓ 无漂移 —— 代码与 .env.example 保持同步</div>
+
+<section id="sec-missing" hidden>
+  <h2>缺失变量 <span class="badge red" id="n-missing"></span></h2>
+  <p class="hint">代码引用了这些变量但 .env.example 没有声明 —— 新环境 clone 后启动必炸。需要补声明，envdrift 不会自动写入值。</p>
+  <div id="list-missing"></div>
+</section>
+
+<section id="sec-leaks" hidden>
+  <h2>疑似泄漏 <span class="badge red" id="n-leaks"></span></h2>
+  <p class="hint">提交到仓库的 env 文件里出现了像真密钥的值。清理后请务必轮换该密钥。</p>
+  <div id="list-leaks"></div>
+</section>
+
+<section id="sec-dead" hidden>
+  <h2>死变量 <span class="badge yellow" id="n-dead"></span></h2>
+  <p class="hint">声明了但代码从未引用。确认无用后可通过清理删除。</p>
+  <div id="list-dead"></div>
+</section>
+
+<section id="sec-dynamic" hidden>
+  <h2>动态引用 <span class="badge gray" id="n-dynamic"></span></h2>
+  <p class="hint">运行时变量名查找，静态分析无法判定，请人工确认。</p>
+  <div id="list-dynamic"></div>
+</section>
+
+<section id="sec-preview" hidden>
+  <h2>清理预览 <span class="badge yellow" id="n-plan"></span></h2>
+  <div id="diff" class="diff"></div>
+  <div class="actions">
+    <button id="apply" class="btn danger">应用清理</button>
+    <button id="cancel" class="btn ghost">取消</button>
+    <span class="hint">死变量删行并留墓碑注释；泄漏值原地置为 &lt;REMOVED_BY_ENVDRIFT&gt;；缺失变量不会被自动写入。</span>
+  </div>
+</section>
+
+<div id="result" class="result" hidden></div>
+
+<footer>
+  envdrift local dashboard · 数据仅存于本机（127.0.0.1）·
+  <a href="https://github.com/HTempt/envdrift" target="_blank" rel="noopener">GitHub</a>
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let currentRoot = null;
+
+function showError(msg) {
+  const el = $('error');
+  if (!msg) { el.hidden = true; return; }
+  el.textContent = msg;
+  el.hidden = false;
+}
+function busy(on, text) {
+  const el = $('status');
+  el.hidden = !on;
+  el.innerHTML = on ? '<span class="spin"></span> ' + esc(text || '扫描中…') : '';
+  $('scan').disabled = on;
+}
+
+async function scan() {
+  const root = $('root').value.trim();
+  if (!root) { showError('请先填写项目路径'); return; }
+  showError(''); busy(true, '扫描 ' + root + ' …');
+  $('fix').disabled = true;
+  ['summary','clean','sec-missing','sec-leaks','sec-dead','sec-dynamic','sec-preview','result'].forEach((id) => $(id).hidden = true);
+  try {
+    const r = await fetch('/api/scan?root=' + encodeURIComponent(root));
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+    currentRoot = root;
+    render(data);
+  } catch (e) {
+    showError('扫描失败：' + e.message + '。请确认路径存在且可读。');
+  } finally { busy(false); }
+}
+
+function render(r) {
+  const n = (id, v) => { $(id).textContent = v; };
+  n('st-missing', r.missing.length); n('st-leaks', r.leaks.length);
+  n('st-dead', r.dead.length); n('st-dynamic', r.dynamic.length);
+  n('n-missing', r.missing.length); n('n-leaks', r.leaks.length);
+  n('n-dead', r.dead.length); n('n-dynamic', r.dynamic.length);
+  $('summary').hidden = false;
+
+  const total = r.missing.length + r.leaks.length + r.dead.length + r.dynamic.length;
+  $('clean').hidden = total !== 0;
+  $('fix').disabled = !(r.dead.length || r.leaks.length);
+
+  $('sec-missing').hidden = !r.missing.length;
+  $('list-missing').innerHTML = r.missing.map((m) => `
+    <div class="finding missing">
+      <span class="name">${esc(m.name)}</span>
+      <span class="meta"> — ${m.refs.length} 处引用 · ${esc(m.langs.join('/'))}</span>
+      <ul class="refs">${m.refs.slice(0, 4).map((ref) =>
+        `<li><a href="#" data-file="${esc(ref.file)}" data-line="${ref.line}">${esc(ref.file)}:${ref.line}</a></li>`).join('')}
+        ${m.refs.length > 4 ? `<li>… 还有 ${m.refs.length - 4} 处</li>` : ''}
+      </ul>
+    </div>`).join('');
+
+  $('sec-leaks').hidden = !r.leaks.length;
+  $('list-leaks').innerHTML = r.leaks.map((l) => `
+    <div class="finding leak">
+      <span class="name">${esc(l.name)}</span>
+      <span class="meta"> — ${esc(l.reason)}</span>
+      <div class="src">${esc(l.file)}:${l.line}</div>
+    </div>`).join('');
+
+  $('sec-dead').hidden = !r.dead.length;
+  $('list-dead').innerHTML = r.dead.map((d) => `
+    <div class="finding dead">
+      <span class="name">${esc(d.name)}</span>
+      <span class="meta"> — 声明于 ${esc(d.declaredIn)}:${d.line}${d.comment ? ' · ' + esc(d.comment) : ''}</span>
+    </div>`).join('');
+
+  $('sec-dynamic').hidden = !r.dynamic.length;
+  const uniq = [...new Map(r.dynamic.map((d) => [d.name + d.file + d.line, d])).values()];
+  $('list-dynamic').innerHTML = uniq.slice(0, 12).map((d) => `
+    <div class="finding"><span class="name">${esc(d.name)}</span>
+    <span class="meta"> — ${esc(d.file)}:${d.line}</span></div>`).join('') +
+    (uniq.length > 12 ? `<div class="empty">… 还有 ${uniq.length - 12} 处</div>` : '');
+}
+
+async function previewPlan() {
+  if (!currentRoot) return;
+  busy(true, '生成清理计划…');
+  try {
+    const r = await fetch('/api/plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ root: currentRoot }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+    renderDiff(data.plan, data.preview);
+    $('sec-preview').hidden = false;
+    $('result').hidden = true;
+    $('sec-preview').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (e) { showError('生成预览失败：' + e.message); }
+  finally { busy(false); }
+}
+
+function renderDiff(plan, previewText) {
+  $('n-plan').textContent = plan.removedLines + ' 行删除 · ' + plan.neutralized + ' 值替换';
+  const container = $('diff');
+  container.innerHTML = '';
+  for (const fp of plan.files) {
+    const box = document.createElement('div');
+    const title = document.createElement('div');
+    title.className = 'file';
+    title.textContent = fp.file;
+    const pre = document.createElement('pre');
+    const lines = previewText.split('\n');
+    let inThisFile = false;
+    for (const line of lines) {
+      if (fp.file === line.trim()) { inThisFile = true; continue; }
+      if (!inThisFile) continue;
+      if (/^\s+\d+\s+-\s/.test(line)) pre.innerHTML += `<span class="del">${esc(line.replace(/^\s+\d+\s/, ''))}</span>\n`;
+      else if (/^\s+\d+\s+\+\s/.test(line)) pre.innerHTML += `<span class="add">${esc(line.replace(/^\s+\d+\s/, ''))}</span>\n`;
+      else if (/^\s+\d+\s{3}/.test(line)) pre.innerHTML += `<span class="ctx">${esc(line.replace(/^\s+\d+\s/, ''))}</span>\n`;
+    }
+    box.append(title, pre);
+    container.append(box);
+  }
+}
+
+async function applyPlanNow() {
+  if (!currentRoot) return;
+  busy(true, '应用清理…');
+  try {
+    const r = await fetch('/api/apply', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ root: currentRoot }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+    const box = $('result');
+    box.hidden = false;
+    box.innerHTML = data.verification.map((v) =>
+      `<div class="vfile ${v.ok ? 'ok' : 'bad'}">${v.ok ? '✓' : '✗'} ${esc(v.file)}${v.ok ? ' — 已清理，仍可解析' : ' — ' + esc(v.problems.join('; '))}</div>`
+    ).join('') + `<div class="vfile ok">清理后：${data.after.dead.length} 死变量 · ${data.after.leaks.length} 泄漏</div>`;
+    $('sec-preview').hidden = true;
+    await scan();
+  } catch (e) { showError('应用失败：' + e.message); }
+  finally { busy(false); }
+}
+
+$('scan').addEventListener('click', scan);
+$('root').addEventListener('keydown', (e) => { if (e.key === 'Enter') scan(); });
+$('fix').addEventListener('click', previewPlan);
+$('apply').addEventListener('click', applyPlanNow);
+$('cancel').addEventListener('click', () => { $('sec-preview').hidden = true; });
+
+// default suggestion for quick demo
+const params = new URLSearchParams(location.search);
+if (params.get('root')) {
+  $('root').value = params.get('root');
+  scan().then(() => { if (params.get('preview')) return previewPlan(); });
+}
+</script>
+</body>
+</html>

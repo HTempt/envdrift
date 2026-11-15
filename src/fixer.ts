@@ -188,6 +188,37 @@ export function renderPreview(plan: FixPlan, root: string, fs: typeof import('no
   return L.join('\n');
 }
 
+/** plain-text preview without ANSI colors — for web UI transport and tests */
+export function renderPreviewText(plan: FixPlan, root: string, fs: typeof import('node:fs'), path: typeof import('node:path')): string {
+  const L: string[] = [];
+  L.push(`cleanup plan — ${plan.removedLines} line(s) to remove, ${plan.neutralized} value(s) to neutralize`);
+  for (const fp of plan.files) {
+    const abs = path.resolve(root, fp.file);
+    let lines: string[];
+    try {
+      lines = fs.readFileSync(abs, 'utf8').split(/\r?\n/);
+    } catch {
+      continue;
+    }
+    L.push('', fp.file);
+    const actions = new Map<number, 'del' | 'repl'>();
+    for (const n of fp.deleteLines) actions.set(n, 'del');
+    for (const n of fp.replaceLines.keys()) actions.set(n, 'repl');
+    const maxTouch = Math.max(...actions.keys());
+    for (let i = 1; i <= lines.length; i++) {
+      const act = actions.get(i);
+      if (!act && i > maxTouch) break;
+      const raw = lines[i - 1] ?? '';
+      if (act === 'del') L.push(`${String(i).padStart(4)} - ${raw}`);
+      else if (act === 'repl') {
+        L.push(`${String(i).padStart(4)} - ${raw}`);
+        L.push(`${String(i).padStart(4)} + ${fp.replaceLines.get(i)}`);
+      } else L.push(`${String(i).padStart(4)}   ${raw}`);
+    }
+  }
+  return L.join('\n');
+}
+
 /* ------------------------------ apply ------------------------------ */
 
 export function applyPlan(plan: FixPlan, root: string, fs: typeof import('node:fs'), path: typeof import('node:path')): void {

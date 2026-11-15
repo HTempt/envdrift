@@ -8,12 +8,14 @@
     "node": ">=18"
   },
   "bin": {
-    "envdrift": "dist/cli.js"
+    "envdrift": "dist/cli.js",
+    "envdrift-ui": "dist/web/server.js"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "src/web/index.html"
   ],
   "scripts": {
     "build": "tsc",

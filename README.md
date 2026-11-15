@@ -104,6 +104,32 @@ with leak values masked to the first 4 characters. `--fix` turns findings into a
 After writing, every touched file is re-parsed to guarantee it still parses, and a
 before/after dead+leak count is printed.
 
+## Web dashboard (v0.4)
+
+Prefer pointing and clicking over the terminal? The same engine ships with a local web UI:
+
+```bash
+envdrift-ui <project-path> [port]   # default port 3737, binds 127.0.0.1
+# e.g.
+envdrift-ui D:/WorkSpace/SideJob/api
+```
+
+Then open the printed URL. The dashboard gives you the full `--fix` flow with zero terminal:
+
+1. **Scan** — paste any project path, get the drift report as color-coded sections
+   (missing / leaks / dead / dynamic) with counts up top
+2. **Highlight** — each finding shows its file:line refs; leak rows are tinted red,
+   dead rows amber
+3. **Preview** — one click builds the cleanup plan and renders it as a red/green diff
+4. **Apply** — confirm, files are cleaned, results verified and re-analyzed live
+
+![scan report](docs/dashboard-scan.png)
+
+![cleanup preview](docs/dashboard-preview.png)
+
+No framework, no build step, no external requests: a single static HTML file served
+by the same process that runs the analysis. Data never leaves your machine.
+
 ## Design notes
 
 - Static-analysis only — fast, no execution, no config needed. Dynamic lookups are reported, not guessed.
@@ -112,7 +138,7 @@ before/after dead+leak count is printed.
 
 ## Roadmap
 
-- `--fix`: write detected vars into `.env.example` with the nearest code comment as doc
+- dashboard: jump-to-editor links (vscode://), watch mode with live re-scan
 - git pre-commit hook + GitHub Action
 - MCP server wrapper
 - interpolation resolution (non-Spring `${OTHER_VAR}` chains in .env files)
