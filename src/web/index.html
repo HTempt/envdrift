@@ -165,33 +165,53 @@ section { margin-top: var(--space-6); scroll-margin-top: var(--space-5); }
   margin-top: var(--space-5); font-weight: 500;
 }
 
-/* ---------- finding rows ---------- */
-.finding {
-  display: flex; flex-direction: column; gap: 2px;
+/* ---------- finding tables (high density) ---------- */
+.tblwrap {
   border: 1px solid var(--line); border-radius: var(--radius-md);
-  background: var(--surface);
-  padding: var(--space-3) var(--space-4);
-  margin-bottom: var(--space-2);
-  transition: border-color .12s ease-out;
+  background: var(--surface); overflow: hidden;
 }
-.finding:hover { border-color: var(--line-strong); }
-.finding.missing { border-left: 3px solid var(--danger); }
-.finding.leak { border-left: 3px solid var(--danger); }
-.finding.dead { border-left: 3px solid var(--warn); }
-.finding .name { font-family: var(--mono); font-weight: 600; font-size: 13.5px; letter-spacing: -0.01em; }
-.finding .meta { color: var(--fg-muted); font-size: 12.5px; }
-.finding .src {
-  font-family: var(--mono); font-size: 12px; margin-top: var(--space-1);
-  color: var(--fg-muted); white-space: pre-wrap; word-break: break-all;
+table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th {
+  position: sticky; top: 0; z-index: 1;
+  text-align: left; font-weight: 550; font-size: 11px;
+  font-family: var(--mono); letter-spacing: .07em; text-transform: uppercase;
+  color: var(--fg-faint); background: var(--bg-subtle);
+  padding: 7px var(--space-4); border-bottom: 1px solid var(--line);
+  white-space: nowrap;
 }
-.finding.leak .src { color: var(--danger); }
-.finding.dead .src { color: var(--warn); }
-.finding .refs { margin: var(--space-1) 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 1px; }
-.finding .refs li { font-family: var(--mono); font-size: 12px; color: var(--fg-muted); }
-.finding .refs a { color: var(--accent); text-decoration: none; }
-.finding .refs a:hover { text-decoration: underline; }
+.tbl td {
+  padding: 7px var(--space-4); border-bottom: 1px solid var(--line);
+  vertical-align: middle; line-height: 1.45;
+}
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tbody tr { transition: background .1s ease-out; }
+.tbl tbody tr:hover { background: var(--bg-subtle); }
+.tbl .vname { font-family: var(--mono); font-weight: 600; font-size: 12.5px; letter-spacing: -0.01em; word-break: break-all; }
+.tbl .loc { font-family: var(--mono); font-size: 12px; color: var(--fg-muted); white-space: nowrap; }
+.tbl .loc a { color: var(--fg-muted); text-decoration: none; }
+.tbl .loc a:hover { color: var(--accent); text-decoration: underline; }
+.tbl .more { color: var(--fg-faint); font-size: 11.5px; white-space: nowrap; }
+.tbl .num { font-variant-numeric: tabular-nums; color: var(--fg-muted); font-size: 12.5px; white-space: nowrap; }
+.tbl .num b { color: var(--fg); font-weight: 600; }
+.dotcol { display: inline-flex; align-items: center; gap: 6px; }
+.dotcol::before { content: ""; width: 7px; height: 7px; border-radius: 50%; flex: none; }
+tr.row-missing .dotcol::before { background: var(--danger); }
+tr.row-leak .dotcol::before { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in oklab, var(--danger) 15%, transparent); }
+tr.row-dead .dotcol::before { background: var(--warn); }
+tr.row-dyn .dotcol::before { background: var(--fg-faint); }
+.langtag {
+  display: inline-block; font-family: var(--mono); font-size: 10.5px;
+  color: var(--fg-muted); background: var(--bg-subtle);
+  border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-right: 4px;
+}
+.reason { color: var(--fg-muted); font-size: 12px; }
+.rowdetail { background: var(--bg-subtle); }
+.rowdetail td { padding: var(--space-2) var(--space-4) var(--space-3); border-bottom: 1px solid var(--line); }
+.rowdetail .refs { display: flex; flex-direction: column; gap: 2px; padding: 0; margin: 0; list-style: none; }
+.rowdetail .refs a { font-family: var(--mono); font-size: 12px; color: var(--accent); text-decoration: none; width: fit-content; }
+.rowdetail .refs a:hover { text-decoration: underline; }
 
-/* ---------- diff preview ---------- */
+/* ---------- sections ---------- */
 .diff {
   font-family: var(--mono); font-size: 12.5px;
   background: var(--bg-subtle); border: 1px solid var(--line);
@@ -244,6 +264,25 @@ section { margin-top: var(--space-6); scroll-margin-top: var(--space-5); }
 footer { margin-top: var(--space-7); color: var(--fg-faint); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: var(--space-4); display: flex; gap: var(--space-2); flex-wrap: wrap; }
 footer a { color: var(--fg-muted); text-decoration: none; }
 footer a:hover { color: var(--fg); text-decoration: underline; }
+
+/* file peek overlay */
+#filepeek { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; z-index: 50; padding: var(--space-5); }
+.peekcard {
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-md);
+  width: min(760px, 100%); max-height: 80vh; display: flex; flex-direction: column;
+  box-shadow: 0 16px 48px rgba(0,0,0,.25);
+}
+.peekhead {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line);
+  font-family: var(--mono); font-size: 12.5px; font-weight: 600;
+}
+.peekbody {
+  font-family: var(--mono); font-size: 12px; line-height: 1.75;
+  padding: var(--space-3) var(--space-4); overflow: auto; margin: 0;
+  white-space: pre; color: var(--fg-muted);
+}
+.peekbody .peekhot { display: block; background: var(--accent-subtle); color: var(--fg); border-left: 2px solid var(--accent); padding-left: var(--space-2); margin-left: calc(-1 * var(--space-2) - 2px); }
 @media (max-width: 640px) {
   .stat b { font-size: 28px; }
   .scanrow .btn { flex: 1 1 auto; justify-content: center; }
@@ -370,13 +409,27 @@ async function scan(quiet = false) {
   } finally { if (!quiet) busy(false); }
 }
 
+function tbl(id, cols, rowsHtml, emptyText, count) {
+  const el = $(id);
+  if (!count) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="tblwrap"><table class="tbl">
+      <thead><tr>${cols.map((c) => `<th${c.w ? ` style="width:${c.w}"` : ''}>${c.t}</th>`).join('')}</tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table></div>`;
+}
+
+function refLinks(refs, max = 3) {
+  return refs.slice(0, max).map((ref) =>
+    `<a href="#" data-file="${esc(ref.file)}" data-line="${ref.line}">${esc(ref.file)}:${ref.line}</a>`).join('');
+}
+
 function render(r) {
   const n = (id, v) => { $(id).textContent = v; };
   n('st-missing', r.missing.length); n('st-leaks', r.leaks.length);
   n('st-dead', r.dead.length); n('st-dynamic', r.dynamic.length);
   n('n-missing', r.missing.length); n('n-leaks', r.leaks.length);
   n('n-dead', r.dead.length); n('n-dynamic', r.dynamic.length);
-  // zero-count stats get the calm ok color and lose their anchor
   const z = (id, v) => { const el = $(id); el.classList.toggle('zero', v === 0); if (v === 0) el.removeAttribute('href'); else el.setAttribute('href', '#sec-' + id.replace('stat-', '')); };
   z('stat-missing', r.missing.length); z('stat-leaks', r.leaks.length);
   z('stat-dead', r.dead.length);
@@ -386,38 +439,58 @@ function render(r) {
   $('clean').hidden = total !== 0;
   $('fix').disabled = !(r.dead.length || r.leaks.length);
 
+  // missing: VARIABLE | refs count | languages | locations (expandable)
   $('sec-missing').hidden = !r.missing.length;
-  $('list-missing').innerHTML = r.missing.map((m) => `
-    <div class="finding missing">
-      <span class="name">${esc(m.name)}</span>
-      <span class="meta"> — ${m.refs.length} 处引用 · ${esc(m.langs.join('/'))}</span>
-      <ul class="refs">${m.refs.slice(0, 4).map((ref) =>
-        `<li><a href="#" data-file="${esc(ref.file)}" data-line="${ref.line}">${esc(ref.file)}:${ref.line}</a></li>`).join('')}
-        ${m.refs.length > 4 ? `<li>… 还有 ${m.refs.length - 4} 处</li>` : ''}
-      </ul>
-    </div>`).join('');
+  $('list-missing').innerHTML = '';
+  tbl('list-missing',
+    [{ t: 'Variable' }, { t: 'Refs', w: '70px' }, { t: 'Languages', w: '120px' }, { t: 'First used in', w: 'auto' }, { t: '', w: '24px' }],
+    r.missing.map((m, i) => {
+      const loc = m.refs[0];
+      return `<tr class="row-missing" data-i="${i}">
+        <td class="vname">${esc(m.name)}</td>
+        <td class="num"><b>${m.refs.length}</b>×</td>
+        <td>${m.langs.map((l) => `<span class="langtag">${esc(l)}</span>`).join('')}</td>
+        <td class="loc"><a href="#" data-file="${esc(loc.file)}" data-line="${loc.line}">${esc(loc.file)}:${loc.line}</a>${m.refs.length > 1 ? ` <span class="more">+${m.refs.length - 1} more</span>` : ''}</td>
+        <td class="more">▾</td>
+      </tr><tr class="rowdetail" hidden><td colspan="5"><ul class="refs">${refLinks(m.refs, 8)}</ul></td></tr>`;
+    }).join(''),
+    '', r.missing.length);
 
+  // leaks: VARIABLE | where | reason
   $('sec-leaks').hidden = !r.leaks.length;
-  $('list-leaks').innerHTML = r.leaks.map((l) => `
-    <div class="finding leak">
-      <span class="name">${esc(l.name)}</span>
-      <span class="meta"> — ${esc(l.reason)}</span>
-      <div class="src">${esc(l.file)}:${l.line}</div>
-    </div>`).join('');
+  tbl('list-leaks',
+    [{ t: 'Variable' }, { t: 'Declared in', w: '240px' }, { t: 'Why it looks like a leak' }],
+    r.leaks.map((l) => `
+      <tr class="row-leak">
+        <td class="vname">${esc(l.name)}</td>
+        <td class="loc"><a href="#" data-file="${esc(l.file)}" data-line="${l.line}">${esc(l.file)}:${l.line}</a></td>
+        <td class="reason">${esc(l.reason)}</td>
+      </tr>`).join(''),
+    '', r.leaks.length);
 
+  // dead: VARIABLE | declared in | hint from comment
   $('sec-dead').hidden = !r.dead.length;
-  $('list-dead').innerHTML = r.dead.map((d) => `
-    <div class="finding dead">
-      <span class="name">${esc(d.name)}</span>
-      <span class="meta"> — 声明于 ${esc(d.declaredIn)}:${d.line}${d.comment ? ' · ' + esc(d.comment) : ''}</span>
-    </div>`).join('');
+  tbl('list-dead',
+    [{ t: 'Variable' }, { t: 'Declared in', w: '240px' }, { t: 'Comment / hint' }],
+    r.dead.map((d) => `
+      <tr class="row-dead">
+        <td class="vname">${esc(d.name)}</td>
+        <td class="loc"><a href="#" data-file="${esc(d.declaredIn)}" data-line="${d.line}">${esc(d.declaredIn)}:${d.line}</a></td>
+        <td class="reason">${d.comment ? esc(d.comment) : '<span class="more">—</span>'}</td>
+      </tr>`).join(''),
+    '', r.dead.length);
 
+  // dynamic: VARIABLE | where
   $('sec-dynamic').hidden = !r.dynamic.length;
   const uniq = [...new Map(r.dynamic.map((d) => [d.name + d.file + d.line, d])).values()];
-  $('list-dynamic').innerHTML = uniq.slice(0, 12).map((d) => `
-    <div class="finding"><span class="name">${esc(d.name)}</span>
-    <span class="meta"> — ${esc(d.file)}:${d.line}</span></div>`).join('') +
-    (uniq.length > 12 ? `<div class="empty">… 还有 ${uniq.length - 12} 处</div>` : '');
+  tbl('list-dynamic',
+    [{ t: 'Expression' }, { t: 'Location', w: 'auto' }],
+    uniq.slice(0, 20).map((d) => `
+      <tr class="row-dyn">
+        <td class="vname">${esc(d.name)}</td>
+        <td class="loc"><a href="#" data-file="${esc(d.file)}" data-line="${d.line}">${esc(d.file)}:${d.line}</a></td>
+      </tr>`).join('') + (uniq.length > 20 ? `<tr><td colspan="2" class="more" style="padding:8px 16px">… 还有 ${uniq.length - 20} 处</td></tr>` : ''),
+    '', uniq.length);
 }
 
 async function previewPlan() {
@@ -489,6 +562,38 @@ $('root').addEventListener('keydown', (e) => { if (e.key === 'Enter') scan(); })
 $('fix').addEventListener('click', previewPlan);
 $('apply').addEventListener('click', applyPlanNow);
 $('cancel').addEventListener('click', () => { $('sec-preview').hidden = true; });
+
+// expandable missing-rows: click the row (not a link) to toggle its detail
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[data-file]');
+  if (a) { e.preventDefault(); openFile(a.dataset.file, Number(a.dataset.line)); return; }
+  const tr = e.target.closest('tr.row-missing');
+  if (!tr) return;
+  const detail = tr.nextElementSibling;
+  if (detail && detail.classList.contains('rowdetail')) detail.hidden = !detail.hidden;
+});
+
+// ask the server for the offending config line and show it inline
+async function openFile(file, line) {
+  if (!currentRoot) return;
+  try {
+    const start = Math.max(1, line - 2);
+    const r = await fetch(`/api/file?root=${encodeURIComponent(currentRoot)}&path=${encodeURIComponent(file)}&start=${start}&end=${line + 2}`);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+    let existing = document.getElementById('filepeek');
+    if (!existing) {
+      existing = document.createElement('div');
+      existing.id = 'filepeek';
+      existing.innerHTML = `<div class="peekcard"><div class="peekhead"><span id="peekpath"></span><button class="btn ghost" id="peekclose">关闭</button></div><pre id="peekbody" class="peekbody"></pre></div>`;
+      document.body.append(existing);
+      existing.querySelector('#peekclose').addEventListener('click', () => existing.remove());
+    }
+    existing.querySelector('#peekpath').textContent = `${file}:${line}`;
+    existing.querySelector('#peekbody').innerHTML = data.lines.map((l) =>
+      `<span class="${l.n === line ? 'peekhot' : ''}">${String(l.n).padStart(4)}  ${esc(l.text)}</span>`).join('\n');
+  } catch (e) { showError('无法读取文件：' + e.message); }
+}
 
 // default suggestion for quick demo
 const params = new URLSearchParams(location.search);
