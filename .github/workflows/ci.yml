@@ -34,5 +34,16 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Smoke test CLI (dogfood on fixture)
-        run: node dist/cli.js test/fixtures/demo-app --json > /dev/null && echo "cli ok"
+      - name: Smoke test CLI (drift fixture → exit 1)
+        run: |
+          node dist/cli.js test/fixtures/demo-app --json > /dev/null
+          code=$?
+          echo "exit=$code"
+          test "$code" -eq 1
+
+      - name: Smoke test CLI (clean fixture → exit 0)
+        run: |
+          node dist/cli.js test/fixtures/clean-app --json > /dev/null
+          code=$?
+          echo "exit=$code"
+          test "$code" -eq 0
