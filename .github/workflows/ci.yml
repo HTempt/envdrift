@@ -63,7 +63,8 @@ jobs:
         shell: bash
         run: |
           cp test/fixtures/demo-app/.env.example /tmp/envex.bak
-          node dist/cli.js test/fixtures/demo-app --fix --yes > /dev/null
+          # exit 1 after fix is CORRECT here: missing vars remain by design (never auto-filled)
+          node dist/cli.js test/fixtures/demo-app --fix --yes > /dev/null || true
           # value lines must be gone (the tombstone comment mentions the name — that's by design)
           ! grep -q 'STRIPE_API_KEY=' test/fixtures/demo-app/.env.example
           ! grep -q 'postgres://user:pass' test/fixtures/demo-app/.env.example
