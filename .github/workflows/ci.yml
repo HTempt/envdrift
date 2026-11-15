@@ -64,7 +64,8 @@ jobs:
         run: |
           cp test/fixtures/demo-app/.env.example /tmp/envex.bak
           node dist/cli.js test/fixtures/demo-app --fix --yes > /dev/null
-          ! grep -q STRIPE_API_KEY test/fixtures/demo-app/.env.example
+          # value lines must be gone (the tombstone comment mentions the name — that's by design)
+          ! grep -q 'STRIPE_API_KEY=' test/fixtures/demo-app/.env.example
           ! grep -q 'postgres://user:pass' test/fixtures/demo-app/.env.example
           grep -q 'REMOVED_BY_ENVDRIFT' test/fixtures/demo-app/.env.example
           cp /tmp/envex.bak test/fixtures/demo-app/.env.example
