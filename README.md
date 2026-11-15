@@ -127,8 +127,14 @@ Then open the printed URL. The dashboard gives you the full `--fix` flow with ze
 
 ![cleanup preview](docs/dashboard-preview.png)
 
+![dark mode](docs/dashboard-dark.png)
+
 No framework, no build step, no external requests: a single static HTML file served
 by the same process that runs the analysis. Data never leaves your machine.
+Design tokens (spacing scale, type ramp, 9-step neutrals, semantic colors) with
+automatic dark mode; stat cards anchor-jump to their sections; diff rows carry
+line numbers and +/- glyph encoding, so the cleanup preview reads correctly
+without relying on color alone.
 
 ### Watch mode
 

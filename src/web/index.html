@@ -37,35 +37,47 @@ button { font: inherit; cursor: pointer; border-radius: var(--radius-sm); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---------- header ---------- */
-header { display: flex; align-items: baseline; gap: var(--space-3); padding: var(--space-6) 0 var(--space-4); flex-wrap: wrap; }
-h1 { font-size: var(--text-xl); font-weight: 600; letter-spacing: -0.01em; }
-header .sub { color: var(--fg-muted); font-size: var(--text-sm); }
+header { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-6) 0 var(--space-5); flex-wrap: wrap; }
+.logo {
+  width: 40px; height: 40px; border-radius: var(--radius-sm); flex: none;
+  background: var(--fg); color: var(--bg);
+  display: grid; place-items: center;
+  font-family: var(--mono); font-weight: 700; font-size: 17px; letter-spacing: -0.5px;
+}
+header .titles { display: flex; flex-direction: column; }
+h1 { font-size: var(--text-xl); font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; }
+header .sub { color: var(--fg-muted); font-size: var(--text-sm); line-height: 1.4; }
+
 .scanrow { display: flex; gap: var(--space-2); padding-bottom: var(--space-5); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .scanrow input {
-  flex: 1 1 320px; font: inherit; padding: 8px 12px; border-radius: var(--radius-sm);
+  flex: 1 1 320px; font: inherit; padding: 9px 12px; border-radius: var(--radius-sm);
   border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-width: 0;
+  font-family: var(--mono); font-size: 13.5px;
 }
 .scanrow input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-subtle); }
 .btn {
   padding: 8px 16px; border: 1px solid var(--line); background: var(--bg-subtle);
   color: var(--fg); font-weight: 500; transition: background .15s ease-out;
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
 }
 .btn:hover { background: var(--line); }
 .btn:active { transform: translateY(0.5px); }
 .btn[disabled] { opacity: .5; cursor: not-allowed; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn.primary:hover { filter: brightness(1.08); background: var(--accent); }
+.btn.primary:hover:not([disabled]) { filter: brightness(1.08); background: var(--accent); }
 .btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 .btn.danger:hover { filter: brightness(1.08); background: var(--danger); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--accent); padding: 8px 8px; }
 .btn.ghost:hover { text-decoration: underline; background: transparent; }
+.btn .spin { width: 13px; height: 13px; border-width: 2px; border-color: rgba(255,255,255,.35); border-top-color: #fff; vertical-align: middle; }
+.btn:not(.primary):not(.danger) .spin { border-color: var(--line); border-top-color: var(--fg-muted); }
 
 /* watch status pill */
 .watchpill {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 12px; color: var(--fg-muted);
   border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px;
-  align-self: center;
+  align-self: center; white-space: nowrap;
 }
 .watchpill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--fg-muted); }
 .watchpill.on { color: var(--ok); border-color: var(--ok); }
@@ -73,25 +85,48 @@ header .sub { color: var(--fg-muted); font-size: var(--text-sm); }
 .watchpill.stale { color: var(--warn); border-color: var(--warn); }
 .watchpill.stale .dot { background: var(--warn); }
 
-/* ---------- summary ---------- */
-.summary { display: flex; gap: var(--space-5); padding: var(--space-4) 0; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
-.stat { display: flex; flex-direction: column; min-width: 88px; }
-.stat b { font-size: var(--text-lg); font-weight: 600; line-height: 1.3; }
+/* ---------- summary: stat blocks ---------- */
+.summary {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3); padding: var(--space-5) 0 var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+.stat {
+  display: flex; flex-direction: column; gap: 2px;
+  border: 1px solid var(--line); border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg);
+  transition: border-color .15s ease-out;
+  text-decoration: none; color: inherit;
+}
+.stat:hover { border-color: var(--fg-muted); }
+.stat b { font-size: 31px; font-weight: 600; line-height: 1.2; letter-spacing: -0.02em; }
 .stat span { font-size: var(--text-sm); color: var(--fg-muted); }
+.stat .zh { color: var(--fg); font-weight: 500; }
+.stat.missing { border-left: 3px solid var(--danger); }
 .stat.missing b { color: var(--danger); }
+.stat.leaks { border-left: 3px solid var(--danger); }
 .stat.leaks b { color: var(--danger); }
+.stat.dead { border-left: 3px solid var(--warn); }
 .stat.dead b { color: var(--warn); }
+.stat.dynamic { border-left: 3px solid var(--line); }
 .stat.dynamic b { color: var(--fg-muted); }
+.stat.zero b { color: var(--ok); }
+.stat a { text-decoration: none; color: inherit; display: block; }
 
 /* ---------- sections ---------- */
-section { margin-top: var(--space-5); }
-section > h2 { font-size: var(--text-base); font-weight: 600; margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+section { margin-top: var(--space-6); scroll-margin-top: var(--space-5); }
+section > h2 {
+  font-size: var(--text-base); font-weight: 600; margin-bottom: var(--space-2);
+  display: flex; align-items: center; gap: var(--space-2);
+}
+section > .hint { margin-bottom: var(--space-3); }
 .badge { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 8px; }
 .badge.red { background: var(--danger-subtle); color: var(--danger); }
 .badge.yellow { background: var(--warn-subtle); color: var(--warn); }
 .badge.gray { background: var(--bg-subtle); color: var(--fg-muted); }
 .empty { color: var(--fg-muted); font-size: var(--text-sm); padding: var(--space-3) 0; }
-.okline { color: var(--ok); background: var(--ok-subtle); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); margin-top: var(--space-5); }
+.okline { color: var(--ok); background: var(--ok-subtle); border-radius: var(--radius-md); padding: var(--space-4) var(--space-5); margin-top: var(--space-5); font-weight: 500; }
 
 /* ---------- finding rows ---------- */
 .finding { border-left: 3px solid var(--line); padding: var(--space-2) 0 var(--space-2) var(--space-4); margin-bottom: var(--space-2); }
@@ -113,17 +148,36 @@ section > h2 { font-size: var(--text-base); font-weight: 600; margin-bottom: var
 
 /* ---------- diff preview ---------- */
 .diff { font-family: var(--mono); font-size: 12.5px; background: var(--bg-subtle); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
-.diff .file { padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); font-weight: 600; background: var(--bg); position: sticky; top: 0; }
-.diff pre { padding: var(--space-3) var(--space-4); margin: 0; overflow-x: auto; }
-.diff .del { color: var(--danger); background: var(--danger-subtle); display: block; padding: 0 var(--space-2); margin: 0 calc(-1 * var(--space-2)); }
-.diff .add { color: var(--ok); background: var(--ok-subtle); display: block; padding: 0 var(--space-2); margin: 0 calc(-1 * var(--space-2)); }
-.diff .ctx { color: var(--fg-muted); display: block; }
+.diff .file {
+  padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--line);
+  font-weight: 600; background: var(--bg); position: sticky; top: 0;
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.diff .file .ficon {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  color: var(--accent); background: var(--accent-subtle);
+  border-radius: 4px; padding: 0 5px;
+}
+.diff .hunk { padding: var(--space-2) 0; }
+.diff .row { display: grid; grid-template-columns: 44px 1fr; }
+.diff .row .ln {
+  text-align: right; padding-right: var(--space-3); color: var(--fg-muted);
+  opacity: .55; user-select: none; font-size: 11.5px; line-height: 1.9;
+}
+.diff .row .tx { white-space: pre-wrap; word-break: break-all; line-height: 1.9; padding-right: var(--space-4); }
+.diff .row.del { background: var(--danger-subtle); }
+.diff .row.del .tx { color: var(--danger); }
+.diff .row.del .tx::before { content: "− "; font-weight: 700; }
+.diff .row.add { background: var(--ok-subtle); }
+.diff .row.add .tx { color: var(--ok); }
+.diff .row.add .tx::before { content: "+ "; font-weight: 700; }
+.diff .row.ctx .tx { color: var(--fg-muted); }
 .actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); align-items: center; flex-wrap: wrap; }
 .hint { font-size: var(--text-sm); color: var(--fg-muted); }
 .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: r .7s linear infinite; vertical-align: -2px; }
 @keyframes r { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; border-top-color: var(--fg-muted); } }
-.result { margin-top: var(--space-4); }
+.result { margin-top: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); background: var(--bg-subtle); }
 .result .vfile { font-size: var(--text-sm); font-family: var(--mono); padding: 2px 0; }
 .result .vfile.ok { color: var(--ok); }
 .result .vfile.bad { color: var(--danger); }
@@ -134,8 +188,11 @@ footer a { color: var(--accent); }
 </head>
 <body>
 <header>
-  <h1>envdrift</h1>
-  <span class="sub">环境变量漂移检测 · 代码与 .env.example 的差距</span>
+  <div class="logo" aria-hidden="true">ed</div>
+  <div class="titles">
+    <h1>envdrift</h1>
+    <span class="sub">环境变量漂移检测 · 代码与 .env.example 的差距</span>
+  </div>
 </header>
 
 <div class="scanrow">
@@ -149,10 +206,10 @@ footer a { color: var(--accent); }
 <div id="error" class="error" hidden></div>
 
 <div id="summary" class="summary" hidden>
-  <div class="stat missing"><b id="st-missing">–</b><span>缺失变量</span></div>
-  <div class="stat leaks"><b id="st-leaks">–</b><span>疑似泄漏</span></div>
-  <div class="stat dead"><b id="st-dead">–</b><span>死变量</span></div>
-  <div class="stat dynamic"><b id="st-dynamic">–</b><span>动态引用</span></div>
+  <a class="stat missing" href="#sec-missing" id="stat-missing"><b id="st-missing">–</b><span><span class="zh">缺失变量</span> · fresh clone 必炸</span></a>
+  <a class="stat leaks" href="#sec-leaks" id="stat-leaks"><b id="st-leaks">–</b><span><span class="zh">疑似泄漏</span> · 记得轮换密钥</span></a>
+  <a class="stat dead" href="#sec-dead" id="stat-dead"><b id="st-dead">–</b><span><span class="zh">死变量</span> · 可一键清理</span></a>
+  <span class="stat dynamic" id="stat-dynamic"><b id="st-dynamic">–</b><span><span class="zh">动态引用</span> · 需人工确认</span></span>
 </div>
 
 <div id="clean" class="okline" hidden>✓ 无漂移 —— 代码与 .env.example 保持同步</div>
@@ -198,6 +255,7 @@ footer a { color: var(--accent); }
   <a href="https://github.com/HTempt/envdrift" target="_blank" rel="noopener">GitHub</a>
 </footer>
 
+</body>
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -209,11 +267,21 @@ function showError(msg) {
   el.textContent = msg;
   el.hidden = false;
 }
-function busy(on, text) {
+function busy(on, text, btnId) {
   const el = $('status');
-  el.hidden = !on;
-  el.innerHTML = on ? '<span class="spin"></span> ' + esc(text || '扫描中…') : '';
-  $('scan').disabled = on;
+  const btn = $(btnId || 'scan');
+  el.hidden = !on || !!btnId; // button-level busy shows in the button itself
+  if (on && btnId) {
+    btn.dataset.label = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span> ' + esc(text || '处理中…');
+  } else if (!on && btnId && btn.dataset.label) {
+    btn.textContent = btn.dataset.label;
+    btn.disabled = false;
+  } else {
+    el.innerHTML = on ? '<span class="spin"></span> ' + esc(text || '扫描中…') : '';
+  }
+  if (!btnId) $('scan').disabled = on;
 }
 
 async function scan(quiet = false) {
@@ -243,6 +311,10 @@ function render(r) {
   n('st-dead', r.dead.length); n('st-dynamic', r.dynamic.length);
   n('n-missing', r.missing.length); n('n-leaks', r.leaks.length);
   n('n-dead', r.dead.length); n('n-dynamic', r.dynamic.length);
+  // zero-count stats get the calm ok color and lose their anchor
+  const z = (id, v) => { const el = $(id); el.classList.toggle('zero', v === 0); if (v === 0) el.removeAttribute('href'); else el.setAttribute('href', '#sec-' + id.replace('stat-', '')); };
+  z('stat-missing', r.missing.length); z('stat-leaks', r.leaks.length);
+  z('stat-dead', r.dead.length);
   $('summary').hidden = false;
 
   const total = r.missing.length + r.leaks.length + r.dead.length + r.dynamic.length;
@@ -285,7 +357,7 @@ function render(r) {
 
 async function previewPlan() {
   if (!currentRoot) return;
-  busy(true, '生成清理计划…');
+  busy(true, '生成清理计划…', 'fix');
   try {
     const r = await fetch('/api/plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ root: currentRoot }) });
     const data = await r.json();
@@ -295,7 +367,7 @@ async function previewPlan() {
     $('result').hidden = true;
     $('sec-preview').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } catch (e) { showError('生成预览失败：' + e.message); }
-  finally { busy(false); }
+  finally { busy(false, '', 'fix'); }
 }
 
 function renderDiff(plan, previewText) {
@@ -306,25 +378,32 @@ function renderDiff(plan, previewText) {
     const box = document.createElement('div');
     const title = document.createElement('div');
     title.className = 'file';
-    title.textContent = fp.file;
-    const pre = document.createElement('pre');
+    title.innerHTML = `<span class="ficon">env</span> <span>${esc(fp.file)}</span>`;
+    const hunk = document.createElement('div');
+    hunk.className = 'hunk';
     const lines = previewText.split('\n');
     let inThisFile = false;
     for (const line of lines) {
       if (fp.file === line.trim()) { inThisFile = true; continue; }
       if (!inThisFile) continue;
-      if (/^\s+\d+\s+-\s/.test(line)) pre.innerHTML += `<span class="del">${esc(line.replace(/^\s+\d+\s/, ''))}</span>\n`;
-      else if (/^\s+\d+\s+\+\s/.test(line)) pre.innerHTML += `<span class="add">${esc(line.replace(/^\s+\d+\s/, ''))}</span>\n`;
-      else if (/^\s+\d+\s{3}/.test(line)) pre.innerHTML += `<span class="ctx">${esc(line.replace(/^\s+\d+\s/, ''))}</span>\n`;
+      const m = /^\s*(\d+)\s+([-\s+])(.*)$/.exec(line);
+      if (!m) continue;
+      const [, ln, kind, rawText] = m;
+      const cls = kind === '-' ? 'del' : kind === '+' ? 'add' : 'ctx';
+      const text = kind === ' ' ? rawText : rawText.replace(/^ /, ''); // strip the single space the template leaves after -/+
+      const row = document.createElement('div');
+      row.className = `row ${cls}`;
+      row.innerHTML = `<span class="ln">${ln}</span><span class="tx">${esc(text)}</span>`;
+      hunk.append(row);
     }
-    box.append(title, pre);
+    box.append(title, hunk);
     container.append(box);
   }
 }
 
 async function applyPlanNow() {
   if (!currentRoot) return;
-  busy(true, '应用清理…');
+  busy(true, '应用清理…', 'apply');
   try {
     const r = await fetch('/api/apply', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ root: currentRoot }) });
     const data = await r.json();
@@ -335,9 +414,9 @@ async function applyPlanNow() {
       `<div class="vfile ${v.ok ? 'ok' : 'bad'}">${v.ok ? '✓' : '✗'} ${esc(v.file)}${v.ok ? ' — 已清理，仍可解析' : ' — ' + esc(v.problems.join('; '))}</div>`
     ).join('') + `<div class="vfile ok">清理后：${data.after.dead.length} 死变量 · ${data.after.leaks.length} 泄漏</div>`;
     $('sec-preview').hidden = true;
-    await scan();
+    await scan(true);
   } catch (e) { showError('应用失败：' + e.message); }
-  finally { busy(false); }
+  finally { busy(false, '', 'apply'); }
 }
 
 $('scan').addEventListener('click', scan);
