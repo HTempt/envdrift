@@ -60,6 +60,19 @@ header .sub { color: var(--fg-muted); font-size: var(--text-sm); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--accent); padding: 8px 8px; }
 .btn.ghost:hover { text-decoration: underline; background: transparent; }
 
+/* watch status pill */
+.watchpill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--fg-muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px;
+  align-self: center;
+}
+.watchpill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--fg-muted); }
+.watchpill.on { color: var(--ok); border-color: var(--ok); }
+.watchpill.on .dot { background: var(--ok); }
+.watchpill.stale { color: var(--warn); border-color: var(--warn); }
+.watchpill.stale .dot { background: var(--warn); }
+
 /* ---------- summary ---------- */
 .summary { display: flex; gap: var(--space-5); padding: var(--space-4) 0; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
 .stat { display: flex; flex-direction: column; min-width: 88px; }
@@ -129,6 +142,7 @@ footer a { color: var(--accent); }
   <input id="root" type="text" spellcheck="false" placeholder="项目绝对路径，如 D:\WorkSpace\SideJob\envdrift\test\fixtures\demo-app" />
   <button id="scan" class="btn primary">扫描</button>
   <button id="fix" class="btn" disabled>生成清理预览</button>
+  <span id="watch" class="watchpill" hidden><span class="dot"></span><span id="watch-label">watch</span></span>
 </div>
 
 <div id="status" class="hint" hidden></div>
@@ -202,21 +216,25 @@ function busy(on, text) {
   $('scan').disabled = on;
 }
 
-async function scan() {
+async function scan(quiet = false) {
   const root = $('root').value.trim();
-  if (!root) { showError('请先填写项目路径'); return; }
-  showError(''); busy(true, '扫描 ' + root + ' …');
+  if (!root) { if (!quiet) showError('请先填写项目路径'); return; }
+  if (!quiet) { showError(''); busy(true, '扫描 ' + root + ' …'); }
   $('fix').disabled = true;
   ['summary','clean','sec-missing','sec-leaks','sec-dead','sec-dynamic','sec-preview','result'].forEach((id) => $(id).hidden = true);
   try {
     const r = await fetch('/api/scan?root=' + encodeURIComponent(root));
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+    const rootChanged = currentRoot !== root;
     currentRoot = root;
     render(data);
+    // (re)subscribe to file watching for this root
+    if (rootChanged || !watchSource) startWatch(root);
   } catch (e) {
-    showError('扫描失败：' + e.message + '。请确认路径存在且可读。');
-  } finally { busy(false); }
+    if (!quiet) showError('扫描失败：' + e.message + '。请确认路径存在且可读。');
+    else setWatch('stale', '重扫失败 · 手动扫描');
+  } finally { if (!quiet) busy(false); }
 }
 
 function render(r) {
@@ -333,6 +351,43 @@ const params = new URLSearchParams(location.search);
 if (params.get('root')) {
   $('root').value = params.get('root');
   scan().then(() => { if (params.get('preview')) return previewPlan(); });
+}
+
+/* ---------------- watch mode: auto re-scan on file change ---------------- */
+let watchSource = null;
+let watchPath = null;
+
+function setWatch(state, label) {
+  const pill = $('watch');
+  pill.hidden = state === 'off';
+  pill.className = 'watchpill' + (state === 'on' ? ' on' : state === 'stale' ? ' stale' : '');
+  $('watch-label').textContent = label;
+}
+
+function stopWatch() {
+  if (watchSource) { watchSource.close(); watchSource = null; }
+  watchPath = null;
+  setWatch('off');
+}
+
+function startWatch(root) {
+  stopWatch();
+  try {
+    watchSource = new EventSource('/api/watch?root=' + encodeURIComponent(root));
+  } catch { setWatch('off'); return; }
+  watchPath = root;
+  watchSource.addEventListener('hello', () => setWatch('on', 'watching · 自动重扫'));
+  watchSource.addEventListener('change', async () => {
+    if (!currentRoot) return;
+    setWatch('stale', '文件已变更 · 重扫中…');
+    await scan(false);
+    setWatch('on', 'watching · 自动重扫');
+  });
+  watchSource.onerror = () => {
+    // server closed or watch unsupported — fall back to manual mode silently
+    setWatch('off');
+    if (watchSource) { watchSource.close(); watchSource = null; }
+  };
 }
 </script>
 </body>

@@ -130,6 +130,20 @@ Then open the printed URL. The dashboard gives you the full `--fix` flow with ze
 No framework, no build step, no external requests: a single static HTML file served
 by the same process that runs the analysis. Data never leaves your machine.
 
+### Watch mode
+
+After the first scan the dashboard automatically subscribes to file changes — the
+green pill in the header shows `● watching · 自动重扫`:
+
+- any change to scanned source files or `.env*` declaration files under the project
+  triggers a debounced re-scan (400 ms) and the report refreshes live
+- the pill turns amber (`文件已变更 · 重扫中…`) while re-scanning
+- watch is recursive and shared per project; run `envdrift-ui` on a monorepo root and
+  edits anywhere in the tree update the report
+- if the server closes, the UI silently falls back to manual scanning
+
+![watch mode](docs/dashboard-watch.png)
+
 ## Design notes
 
 - Static-analysis only — fast, no execution, no config needed. Dynamic lookups are reported, not guessed.

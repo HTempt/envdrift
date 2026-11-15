@@ -13,7 +13,7 @@
  */
 
 import { createServer } from 'node:http';
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, watch } from 'node:fs';
 import { resolve, relative, isAbsolute, sep, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyze } from '../analyzer.js';
@@ -124,6 +124,27 @@ export function startServer(port: number, host = '127.0.0.1'): Promise<string> {
         return json(res, 200, { file: relPath, lines: lines.slice(start - 1, end).map((text, i) => ({ n: start + i, text })) });
       }
 
+      if (req.method === 'GET' && url.pathname === '/api/watch') {
+        // SSE stream: emits `change` after any relevant file under root changes.
+        const root = safeRoot(url.searchParams.get('root'));
+        if (!root) return json(res, 400, { error: 'root must be an existing directory' });
+        res.writeHead(200, {
+          'content-type': 'text/event-stream; charset=utf-8',
+          'cache-control': 'no-store',
+          connection: 'keep-alive',
+        });
+        res.write(`event: hello\ndata: ${JSON.stringify({ root })}\n\n`);
+        const unsubscribe = watchRoot(root, () => {
+          res.write(`event: change\ndata: {}\n\n`);
+        });
+        const ka = setInterval(() => res.write(':ka\n\n'), 15000);
+        req.on('close', () => {
+          clearInterval(ka);
+          unsubscribe();
+        });
+        return;
+      }
+
       json(res, 404, { error: 'not found' });
     } catch (err) {
       json(res, 500, { error: err instanceof Error ? err.message : String(err) });
@@ -133,6 +154,63 @@ export function startServer(port: number, host = '127.0.0.1'): Promise<string> {
   return new Promise((ok) => {
     server.listen(port, host, () => ok(`http://${host}:${port}`));
   });
+}
+
+/* ------------------------------ watch mode ------------------------------ */
+
+/**
+ * One recursive fs.watch per root (shared across all SSE clients).
+ * Emits at most once per debounce window, only for files envdrift cares about:
+ * source extensions scanned + .env* declaration files.
+ */
+const watchers = new Map<string, { watcher: import('node:fs').FSWatcher; timer: NodeJS.Timeout | null; pending: boolean }>();
+const WATCH_DEBOUNCE_MS = 400;
+
+const WATCHABLE_EXTS = new Set([
+  '.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx', '.mts', '.cts',
+  '.py', '.go', '.java', '.kt', '.rs', '.rb', '.php', '.cs',
+  '.vue', '.svelte', '.astro', '.yaml', '.yml', '.toml', '.json', '.properties',
+]);
+
+function isWatchablePath(root: string, _event: string, filename: string | null): boolean {
+  if (!filename) return true; // rename with unknown name — assume relevant
+  const base = filename.split('\\').join('/');
+  const name = base.slice(base.lastIndexOf('/') + 1).toLowerCase();
+  if (name.startsWith('.env')) return true; // declaration files always matter
+  if (name === 'package.json' || name === 'docker-compose.yml') return true;
+  return WATCHABLE_EXTS.has(name.slice(name.lastIndexOf('.') || 0));
+}
+
+function watchRoot(root: string, onChange: () => void): () => void {
+  const existing = watchers.get(root);
+  if (existing) {
+    existing.pending = true; // ensure latest listener set — simple model: one callback per subscribe
+  }
+  let watcher: import('node:fs').FSWatcher;
+  try {
+    watcher = watch(root, { recursive: true }, (event, filename) => {
+      if (!isWatchablePath(root, event, filename)) return;
+      const w = watchers.get(root);
+      if (!w) return;
+      if (w.timer) clearTimeout(w.timer);
+      w.timer = setTimeout(() => {
+        w.timer = null;
+        scanCache.delete(root); // force fresh analysis after change
+        onChange();
+      }, WATCH_DEBOUNCE_MS);
+    });
+  } catch {
+    return () => {}; // watch unsupported (e.g. some network drives) — client stays in manual mode
+  }
+  watchers.set(root, { watcher, timer: null, pending: false });
+  return () => {
+    const w = watchers.get(root);
+    if (w && w.watcher === watcher) {
+      w.watcher.close();
+      if (w.timer) clearTimeout(w.timer);
+      watchers.delete(root);
+    }
+  };
 }
 
 // direct execution: `node dist/web/server.js [root] [port]`
