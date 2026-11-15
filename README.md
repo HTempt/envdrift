@@ -1,5 +1,7 @@
 # envdrift
 
+[![CI](https://github.com/HTempt/envdrift/actions/workflows/ci.yml/badge.svg)](https://github.com/HTempt/envdrift/actions/workflows/ci.yml)
+
 **Detect environment variable drift** — the gap between what your code actually reads and what `.env.example` declares.
 
 The pain it solves: a fresh `git clone` + `npm install` + `npm run dev` crashes with `undefined` config, because someone added `process.env.NEW_THING` to code but never updated `.env.example`. Nobody notices until the next person (or the CI, or an AI agent in a fresh sandbox) hits it.
